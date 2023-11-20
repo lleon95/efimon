@@ -21,6 +21,11 @@ namespace efimon {
  */
 class Status : public std::exception {
  public:
+  /** Error code for C compatibility */
+  int code;
+  /** Error message */
+  std::string msg;
+
   /** Error codes */
   enum {
     OK = 0,            /** OK Status */
@@ -52,11 +57,15 @@ class Status : public std::exception {
    * @param code code of the error
    * @param msg description
    */
-  Status(const int code, const std::string &msg) noexcept
-      : std::exception{msg}, code{code} {}
+  Status(const int code, const std::string& msg) noexcept
+      : std::exception{}, code{code}, msg{msg} {}
 
-  /** Error code for C compatibility */
-  int code;
+  /**
+   * @brief Returns the error message from the exception
+   *
+   * @return const char*
+   */
+  virtual const char* what() const noexcept { return msg.c_str(); }
 };
 } /* namespace efimon */
 #endif /* INCLUDE_EFIMON_STATUS_HPP_ */

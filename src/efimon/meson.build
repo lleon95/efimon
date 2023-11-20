@@ -6,5 +6,6 @@
 #
 
 lib_efimon_sources += [
-  files('arg-parser.cpp')
+  files('arg-parser.cpp'),
+  files('proc/thread-tree.cpp'),
 ]

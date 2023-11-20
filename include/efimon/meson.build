@@ -7,6 +7,8 @@
 
 lib_headers = [
   files('arg-parser.hpp'),
+  files('status.hpp'),
+  files('proc/thread-tree.hpp'),
 ]
 
 # -----------------------------------------------------------------------------
