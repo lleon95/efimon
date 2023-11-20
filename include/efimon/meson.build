@@ -5,3 +5,12 @@
 # Author: Luis G. Leon Vega <luis.leon@ieee.org>
 #
 
+lib_headers = [
+  files('arg-parser.hpp'),
+]
+
+# -----------------------------------------------------------------------------
+# Headers installation
+# -----------------------------------------------------------------------------
+
+install_headers(lib_headers, subdir : 'efimon')
