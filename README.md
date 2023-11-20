@@ -26,6 +26,17 @@ sudo apt install ninja-build
 sudo pip3 install meson
 ```
 
+**Optional**
+
+For the documentation, you will require other dependencies like graphviz, java, texlive and doxygen. Please, install them by using:
+
+```bash
+# Ubuntu
+sudo apt install doxygen graphviz openjdk-17-jre texlive-font-utils
+```
+
+You can switch the "-Dbuild-docs" or "-Dbuild-docs-only" to true if you want to compile the documentation.
+
 ### Compiling EfiMon
 
 Compiling EfiMon follows the same process as any meson project. Please, follow the steps to have EfiMon on your system:
