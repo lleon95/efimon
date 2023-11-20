@@ -44,6 +44,12 @@ endif
 if not get_option('build-docs-only')
   subdir('include/efimon')
   subdir('src')
+
+  # Imports pkgconfig module
+  pkgconfig = import('pkgconfig')
+  pkgconfig_install_dir = join_paths(get_option('libdir'), 'pkgconfig')
+  pkgconfig.generate(libefimon,
+                     description: 'Implementation-Agnostic Efficiency Monitor')
 endif
 
 if get_option('build-examples')
