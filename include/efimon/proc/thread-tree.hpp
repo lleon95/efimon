@@ -9,6 +9,7 @@
 #ifndef INCLUDE_EFIMON_PROC_THREAD_TREE_HPP_
 #define INCLUDE_EFIMON_PROC_THREAD_TREE_HPP_
 
+#include <string>
 #include <vector>
 
 #include <efimon/status.hpp>
@@ -63,6 +64,8 @@ class ThreadTree {
   const int pid_;
   /** Process thread tree */
   std::vector<int> tree_;
+  /** Process tree path */
+  std::string path_;
 };
 
 } /* namespace efimon */
