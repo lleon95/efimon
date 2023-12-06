@@ -14,18 +14,52 @@
 #include <efimon/observer-enums.hpp>
 #include <efimon/observer.hpp>
 #include <efimon/readings.hpp>
+#include <efimon/readings/cpu-readings.hpp>
 #include <efimon/status.hpp>
 
 namespace efimon {
 
 /**
- * @brief Observer class that queries /proc/stat
+ * @brief Observer class that queries /proc/pid/stat
  *
  * This measures the RAM usage, CPU usage and uptime
  */
 class ProcStatObserver : public Observer {
  public:
   ProcStatObserver() = delete;
+
+  /**
+   * @brief Payload structure extracted from /proc/pid/stat
+   *
+   */
+  typedef struct {
+    /** Process ID */
+    int pid;
+    /** Process State. Refer to ProcState for the values */
+    char state;
+    /** Amount of time that this process has been scheduled in user mode,
+    measured in clock ticks */
+    uint64_t utime;
+    /** Amount of time that this process has been scheduled in kernel mode,
+    measured in clock ticks */
+    uint64_t stime;
+    /** The time the process started after system boot. Measured in clock
+    ticks */
+    uint64_t starttime;
+    /** Total virtual memory size in bytes. */
+    uint64_t vsize;
+    /** Resident Set Size: number of pages the process has in real memory.
+    This is just the pages which count toward text, data, or stack space.
+    This does not include pages which have not been demand-loaded in, or which
+    are swapped out */
+    int64_t rss;
+    /** Index of the processor where it is running */
+    int processor;
+    /** Foreign: total time spent by the process */
+    uint64_t total;
+    /** Foreign: active time of the process*/
+    uint64_t active;
+  } ProcStatData;
 
   /**
    * @brief Construct a new Proc Stat Observer
@@ -53,7 +87,7 @@ class ProcStatObserver : public Observer {
    *
    * @return std::vector<Readings> vector of readings from the observer
    */
-  std::vector<Readings> GetReadings() override;
+  std::vector<Readings*> GetReadings() override;
 
   /**
    * @brief Select the device to measure
@@ -144,6 +178,39 @@ class ProcStatObserver : public Observer {
    * @brief Destroy the Proc Stat Observer object
    */
   virtual ~ProcStatObserver();
+
+ private:
+  /** Process aliveness */
+  bool alive_;
+  /** Proccess data payload when reading /proc/pid/stat */
+  ProcStatData proc_data_;
+  /** Readings from the CPU */
+  CPUReadings readings_;
+  /** Uptime */
+  uint64_t uptime_;
+
+  /**
+   * @brief Get the system uptime
+   *
+   * @return uint64_t timestamp relative to the system uptime in microseconds
+   */
+  uint64_t GetUptime();
+
+  /**
+   * @brief Read the /proc/pid/stat file
+   *
+   */
+  void GetProcStat();
+
+  /**
+   * @brief Check if the process is still alive
+   */
+  void CheckAlive();
+
+  /**
+   * @brief Translate the readings from ProcStatData to CPUReadings
+   */
+  void TranslateReadings() noexcept;
 };
 
 } /* namespace efimon */

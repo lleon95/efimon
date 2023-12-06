@@ -52,9 +52,9 @@ class Observer {
    * Before reading it, the interval must be finished or the
    * Observer::Trigger() method must be invoked before calling this method
    *
-   * @return std::vector<Readings> vector of readings from the observer
+   * @return std::vector<Readings*> vector of readings from the observer
    */
-  virtual std::vector<Readings> GetReadings() = 0;
+  virtual std::vector<Readings*> GetReadings() = 0;
 
   /**
    * @brief Select the device to measure
