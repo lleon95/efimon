@@ -14,7 +14,6 @@
 #include <efimon/observer-enums.hpp>
 #include <efimon/proc/stat.hpp>
 #include <efimon/proc/thread-tree.hpp>
-#include <efimon/readings/cpu-readings.hpp>
 
 int main(int argc, char **argv) {
   auto cli = efimon::ArgParser{argc, argv};
@@ -41,10 +40,12 @@ int main(int argc, char **argv) {
   efimon::ProcStatObserver pstat{(uint)pid, efimon::ObserverScope::PROCESS, 1};
   for (int i = 0; i <= 15; ++i) {
     pstat.Trigger();
-    efimon::Readings *reading = pstat.GetReadings()[0];
     efimon::CPUReadings *readingcpu =
-        dynamic_cast<efimon::CPUReadings *>(reading);
-    std::cout << "\tCPU usage: " << readingcpu->overall_usage << "%"
+        dynamic_cast<efimon::CPUReadings *>(pstat.GetReadings()[0]);
+    efimon::RAMReadings *readingram =
+        dynamic_cast<efimon::RAMReadings *>(pstat.GetReadings()[1]);
+    std::cout << "\tCPU usage: " << readingcpu->overall_usage << "%, ";
+    std::cout << "RAM usage: " << readingram->overall_usage << " MiB"
               << std::endl;
     sleep(1);
   }

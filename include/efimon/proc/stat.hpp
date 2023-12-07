@@ -15,6 +15,7 @@
 #include <efimon/observer.hpp>
 #include <efimon/readings.hpp>
 #include <efimon/readings/cpu-readings.hpp>
+#include <efimon/readings/ram-readings.hpp>
 #include <efimon/status.hpp>
 
 namespace efimon {
@@ -85,7 +86,8 @@ class ProcStatObserver : public Observer {
    * Before reading it, the interval must be finished or the
    * Observer::Trigger() method must be invoked before calling this method
    *
-   * @return std::vector<Readings> vector of readings from the observer
+   * @return std::vector<Readings> vector of readings from the observer.
+   * The order will be 0: CPU Readings, 1: RAM Readings
    */
   std::vector<Readings*> GetReadings() override;
 
@@ -185,7 +187,9 @@ class ProcStatObserver : public Observer {
   /** Proccess data payload when reading /proc/pid/stat */
   ProcStatData proc_data_;
   /** Readings from the CPU */
-  CPUReadings readings_;
+  CPUReadings cpu_readings_;
+  /** Readings from the RAM */
+  RAMReadings ram_readings_;
   /** Uptime */
   uint64_t uptime_;
 

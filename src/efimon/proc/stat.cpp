@@ -81,7 +81,8 @@ Status ProcStatObserver::Trigger() {
 
 std::vector<Readings *> ProcStatObserver::GetReadings() {
   std::vector<Readings *> readings{};
-  readings.push_back(&this->readings_);
+  readings.push_back(&this->cpu_readings_);
+  readings.push_back(&this->ram_readings_);
   return readings;
 }
 
@@ -120,13 +121,16 @@ Status ProcStatObserver::ClearInterval() { return Status{}; }
 Status ProcStatObserver::Reset() {
   /* Resetting the structures is more than enough */
   std::memset(&this->proc_data_, 0, sizeof(ProcStatData));
-  this->readings_.type = static_cast<uint>(ObserverType::NONE);
-  this->readings_.timestamp = 0;
-  this->readings_.difference = 0;
-  this->readings_.overall_usage = 0;
-  this->readings_.overall_power = 0;
-  this->readings_.core_usage.clear();
-  this->readings_.core_power.clear();
+  this->cpu_readings_.type = static_cast<uint>(ObserverType::NONE);
+  this->cpu_readings_.timestamp = 0;
+  this->cpu_readings_.difference = 0;
+  this->cpu_readings_.overall_usage = 0;
+  this->cpu_readings_.overall_power = 0;
+  this->cpu_readings_.core_usage.clear();
+  this->cpu_readings_.core_power.clear();
+  this->ram_readings_.overall_usage = 0;
+  this->ram_readings_.overall_bw = 0;
+  this->ram_readings_.overall_power = 0;
   return Status{};
 }
 
@@ -192,9 +196,10 @@ void ProcStatObserver::TranslateReadings() noexcept {
   bool warmup = false;
 
   /* Base object */
-  this->readings_.type = this->caps_[0].type;
-  this->readings_.difference = this->uptime_ - this->readings_.timestamp;
-  this->readings_.timestamp = this->uptime_;
+  this->cpu_readings_.type = this->caps_[0].type;
+  this->cpu_readings_.difference =
+      this->uptime_ - this->cpu_readings_.timestamp;
+  this->cpu_readings_.timestamp = this->uptime_;
 
   /* CPU-specific */
   uint64_t total = this->uptime_ - this->proc_data_.starttime;
@@ -220,16 +225,26 @@ void ProcStatObserver::TranslateReadings() noexcept {
   /* Compute the percentage */
   float total_usage =
       100.f * ((float)diff_active / (float)diff_total);  // NOLINT
-  this->readings_.overall_usage = warmup ? 0.f : total_usage / total_processors;
+  this->cpu_readings_.overall_usage =
+      warmup ? 0.f : total_usage / total_processors;
+
+  /* Compute the RAM consumption. Factor 20 is MiB */
+  this->ram_readings_.overall_usage =
+      proc_data_.rss * sysconf(_SC_PAGE_SIZE) >> 20;
+  this->ram_readings_.total_memory_usage = proc_data_.vsize >> 20;
+  this->ram_readings_.swap_usage = this->ram_readings_.total_memory_usage -
+                                   this->ram_readings_.overall_usage;
 
   /* Not supported metrics */
-  this->readings_.overall_power = -1.f;
-  this->readings_.core_power.resize(total_processors);
-  this->readings_.core_usage.resize(total_processors);
-  std::fill(this->readings_.core_power.begin(),
-            this->readings_.core_power.end(), -1.f);
-  std::fill(this->readings_.core_usage.begin(),
-            this->readings_.core_usage.end(), -1.f);
+  this->cpu_readings_.overall_power = -1.f;
+  this->ram_readings_.overall_power = -1.f;
+  this->ram_readings_.overall_bw = -1.f;
+  this->cpu_readings_.core_power.resize(total_processors);
+  this->cpu_readings_.core_usage.resize(total_processors);
+  std::fill(this->cpu_readings_.core_power.begin(),
+            this->cpu_readings_.core_power.end(), -1.f);
+  std::fill(this->cpu_readings_.core_usage.begin(),
+            this->cpu_readings_.core_usage.end(), -1.f);
 }
 
 } /* namespace efimon */
