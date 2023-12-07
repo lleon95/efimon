@@ -21,9 +21,9 @@ namespace efimon {
 struct Readings {
   /** Abstract representation of the observer type */
   uint64_t type;
-  /** Current timestamp at the time of the measurement */
+  /** Current timestamp at the time of the measurement in ms */
   uint64_t timestamp;
-  /** Time difference from the last measurement */
+  /** Time difference from the last measurement in ms */
   uint64_t difference;
   /** Destructor to enable the inheritance */
   virtual ~Readings() = default;

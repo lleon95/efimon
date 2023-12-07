@@ -45,8 +45,9 @@ int main(int argc, char **argv) {
     efimon::RAMReadings *readingram =
         dynamic_cast<efimon::RAMReadings *>(pstat.GetReadings()[1]);
     std::cout << "\tCPU usage: " << readingcpu->overall_usage << "%, ";
-    std::cout << "RAM usage: " << readingram->overall_usage << " MiB"
-              << std::endl;
+    std::cout << "RAM usage: " << readingram->overall_usage << " MiB, ";
+    std::cout << "Difference: " << readingram->difference << " us, ";
+    std::cout << "Timestamp: " << readingram->timestamp << " us" << std::endl;
     sleep(1);
   }
 

@@ -131,6 +131,9 @@ Status ProcStatObserver::Reset() {
   this->ram_readings_.overall_usage = 0;
   this->ram_readings_.overall_bw = 0;
   this->ram_readings_.overall_power = 0;
+  this->ram_readings_.type = static_cast<uint>(ObserverType::NONE);
+  this->ram_readings_.timestamp = 0;
+  this->ram_readings_.difference = 0;
   return Status{};
 }
 
@@ -145,7 +148,7 @@ uint64_t ProcStatObserver::GetUptime() {
   fscanf(proc_uptime_file, "%f", &uptime);
   fclose(proc_uptime_file);
 
-  return static_cast<uint64_t>(uptime * sysconf(_SC_CLK_TCK));
+  return static_cast<uint64_t>(uptime * sysconf(_SC_CLK_TCK)) * 10;
 }
 
 void ProcStatObserver::GetProcStat() {
@@ -196,10 +199,13 @@ void ProcStatObserver::TranslateReadings() noexcept {
   bool warmup = false;
 
   /* Base object */
-  this->cpu_readings_.type = this->caps_[0].type;
+  this->cpu_readings_.type = static_cast<int>(ObserverType::CPU);
+  this->ram_readings_.type = static_cast<int>(ObserverType::RAM);
   this->cpu_readings_.difference =
       this->uptime_ - this->cpu_readings_.timestamp;
   this->cpu_readings_.timestamp = this->uptime_;
+  this->ram_readings_.difference = this->cpu_readings_.difference;
+  this->ram_readings_.timestamp = this->cpu_readings_.timestamp;
 
   /* CPU-specific */
   uint64_t total = this->uptime_ - this->proc_data_.starttime;
