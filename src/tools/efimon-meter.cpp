@@ -6,9 +6,13 @@
  * @copyright Copyright (c) 2023. See License for Licensing
  */
 
+#include <unistd.h>
+
 #include <iostream>
 
 #include <efimon/arg-parser.hpp>
+#include <efimon/observer-enums.hpp>
+#include <efimon/proc/stat.hpp>
 #include <efimon/proc/thread-tree.hpp>
 
 int main(int argc, char **argv) {
@@ -26,8 +30,25 @@ int main(int argc, char **argv) {
 
   efimon::ThreadTree ptree{pid};
 
+  std::cout << "--- Creating process tree ---" << std::endl;
   for (const auto &elem : ptree.GetTree()) {
     std::cout << "\t" << elem << std::endl;
+  }
+
+  std::cout << "--- Reading metrics every second for 15 seconds ---"
+            << std::endl;
+  efimon::ProcStatObserver pstat{(uint)pid, efimon::ObserverScope::PROCESS, 1};
+  for (int i = 0; i <= 15; ++i) {
+    pstat.Trigger();
+    efimon::CPUReadings *readingcpu =
+        dynamic_cast<efimon::CPUReadings *>(pstat.GetReadings()[0]);
+    efimon::RAMReadings *readingram =
+        dynamic_cast<efimon::RAMReadings *>(pstat.GetReadings()[1]);
+    std::cout << "\tCPU usage: " << readingcpu->overall_usage << "%, ";
+    std::cout << "RAM usage: " << readingram->overall_usage << " MiB, ";
+    std::cout << "Difference: " << readingram->difference << " us, ";
+    std::cout << "Timestamp: " << readingram->timestamp << " us" << std::endl;
+    sleep(1);
   }
 
   return 0;
