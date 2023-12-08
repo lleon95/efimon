@@ -149,11 +149,11 @@ class ProcStatObserver : public Observer {
   Status GetStatus() override;
 
   /**
-   * @brief Set the Interval in microseconds
+   * @brief Set the Interval in milliseconds
    *
    * Sets how often the observer will be refreshed
    *
-   * @param interval time in microseconds
+   * @param interval time in milliseconds
    * @return Status of the setting process
    */
   Status SetInterval(const uint64_t interval) override;
@@ -196,7 +196,7 @@ class ProcStatObserver : public Observer {
   /**
    * @brief Get the system uptime
    *
-   * @return uint64_t timestamp relative to the system uptime in microseconds
+   * @return uint64_t timestamp relative to the system uptime in milliseconds
    */
   uint64_t GetUptime();
 

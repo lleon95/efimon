@@ -114,11 +114,11 @@ class Observer {
   virtual Status GetStatus() = 0;
 
   /**
-   * @brief Set the Interval in microseconds
+   * @brief Set the Interval in milliseconds
    *
    * Sets how often the observer will be refreshed
    *
-   * @param interval time in microseconds
+   * @param interval time in milliseconds
    * @return Status of the setting process
    */
   virtual Status SetInterval(const uint64_t interval) = 0;
