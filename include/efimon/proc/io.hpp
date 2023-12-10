@@ -1,77 +1,56 @@
 /**
- * @file stat.hpp
+ * @file io.hpp
  * @author Luis G. Leon-Vega (luis.leon@ieee.org)
- * @brief Observer to query the /proc/pid/stat
+ * @brief Observer to query the /proc/pid/io
  *
  * @copyright Copyright (c) 2023. See License for Licensing
  */
 
-#ifndef INCLUDE_EFIMON_PROC_STAT_HPP_
-#define INCLUDE_EFIMON_PROC_STAT_HPP_
+#ifndef INCLUDE_EFIMON_PROC_IO_HPP_
+#define INCLUDE_EFIMON_PROC_IO_HPP_
 
 #include <vector>
 
 #include <efimon/observer-enums.hpp>
 #include <efimon/observer.hpp>
 #include <efimon/readings.hpp>
-#include <efimon/readings/cpu-readings.hpp>
-#include <efimon/readings/ram-readings.hpp>
+#include <efimon/readings/io-readings.hpp>
 #include <efimon/status.hpp>
 
 namespace efimon {
 
 /**
- * @brief Observer class that queries /proc/pid/stat
+ * @brief Observer class that queries /proc/pid/io
  *
- * This measures the RAM usage, CPU usage and uptime
+ * This measures the IO usage
  */
-class ProcStatObserver : public Observer {
+class ProcIOObserver : public Observer {
  public:
-  ProcStatObserver() = delete;
+  ProcIOObserver() = delete;
 
   /**
-   * @brief Payload structure extracted from /proc/pid/stat
+   * @brief Payload structure extracted from /proc/pid/io
    *
    */
   typedef struct {
-    /** Process ID */
-    int pid;
-    /** Process State. Refer to ProcState for the values */
-    char state;
-    /** Amount of time that this process has been scheduled in user mode,
-    measured in clock ticks */
-    uint64_t utime;
-    /** Amount of time that this process has been scheduled in kernel mode,
-    measured in clock ticks */
-    uint64_t stime;
-    /** The time the process started after system boot. Measured in clock
-    ticks */
-    uint64_t starttime;
-    /** Total virtual memory size in bytes. */
-    uint64_t vsize;
-    /** Resident Set Size: number of pages the process has in real memory.
-    This is just the pages which count toward text, data, or stack space.
-    This does not include pages which have not been demand-loaded in, or which
-    are swapped out */
-    int64_t rss;
-    /** Index of the processor where it is running */
-    int processor;
-    /** Foreign: total time spent by the process */
-    uint64_t total;
-    /** Foreign: active time of the process*/
-    uint64_t active;
-  } ProcStatData;
+    /** The number of bytes which this task has caused to be read from storage
+     */
+    uint64_t rchar;
+    /** The number of bytes which this task has caused, or shall cause to be
+    written to disk.*/
+    uint64_t wchar;
+  } ProcIOData;
 
   /**
-   * @brief Construct a new Proc Stat Observer
+   * @brief Construct a new Proc IO Observer
    *
    * @param pid process id (it is specific to processes)
    * @param scope if defined as ObserverScope::SYSTEM, pid is ignored
    * @param interval interval of how often the proc is queried. 0 for manual
    * query
    */
-  ProcStatObserver(const uint pid, const ObserverScope scope,
-                   const uint64_t interval);
+  ProcIOObserver(const uint pid, const ObserverScope scope,
+                 const uint64_t interval);
 
   /**
    * @brief Manually triggers the measurement in case that there is no interval
@@ -87,7 +66,7 @@ class ProcStatObserver : public Observer {
    * Observer::Trigger() method must be invoked before calling this method
    *
    * @return std::vector<Readings> vector of readings from the observer.
-   * The order will be 0: CPU Readings, 1: RAM Readings
+   * The order will be 0: I/O Readings
    */
   std::vector<Readings*> GetReadings() override;
 
@@ -95,7 +74,7 @@ class ProcStatObserver : public Observer {
    * @brief Select the device to measure
    *
    * This method can be implemented or not, depending on the type of observer.
-   * Some valid observers are the CPU (measuring a socket or core)
+   * Some valid observers are the IO (measuring a socket or core)
    *
    * @param device device enumeration
    * @return Status of the transaction
@@ -177,19 +156,17 @@ class ProcStatObserver : public Observer {
   Status Reset() override;
 
   /**
-   * @brief Destroy the Proc Stat Observer object
+   * @brief Destroy the Proc IO Observer object
    */
-  virtual ~ProcStatObserver();
+  virtual ~ProcIOObserver();
 
  private:
   /** Process aliveness */
   bool alive_;
-  /** Proccess data payload when reading /proc/pid/stat */
-  ProcStatData proc_data_;
-  /** Readings from the CPU */
-  CPUReadings cpu_readings_;
-  /** Readings from the RAM */
-  RAMReadings ram_readings_;
+  /** Proccess data payload when reading /proc/pid/io */
+  ProcIOData proc_data_;
+  /** Readings from the I/O */
+  IOReadings io_readings_;
   /** Uptime */
   uint64_t uptime_;
 
@@ -201,10 +178,10 @@ class ProcStatObserver : public Observer {
   uint64_t GetUptime();
 
   /**
-   * @brief Read the /proc/pid/stat file
+   * @brief Read the /proc/pid/io file
    *
    */
-  void GetProcStat();
+  void GetProcIO();
 
   /**
    * @brief Check if the process is still alive
@@ -212,11 +189,11 @@ class ProcStatObserver : public Observer {
   void CheckAlive();
 
   /**
-   * @brief Translate the readings from ProcStatData to CPUReadings
+   * @brief Translate the readings from ProcIOData to IOReadings
    */
   void TranslateReadings() noexcept;
 };
 
 } /* namespace efimon */
 
-#endif /* INCLUDE_EFIMON_PROC_STAT_HPP_ */
+#endif /* INCLUDE_EFIMON_PROC_IO_HPP_ */

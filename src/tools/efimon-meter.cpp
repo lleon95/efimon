@@ -12,6 +12,7 @@
 
 #include <efimon/arg-parser.hpp>
 #include <efimon/observer-enums.hpp>
+#include <efimon/proc/io.hpp>
 #include <efimon/proc/stat.hpp>
 #include <efimon/proc/thread-tree.hpp>
 
@@ -38,16 +39,25 @@ int main(int argc, char **argv) {
   std::cout << "--- Reading metrics every second for 15 seconds ---"
             << std::endl;
   efimon::ProcStatObserver pstat{(uint)pid, efimon::ObserverScope::PROCESS, 1};
+  efimon::ProcIOObserver pio{(uint)pid, efimon::ObserverScope::PROCESS, 1};
+
   for (int i = 0; i <= 15; ++i) {
     pstat.Trigger();
+    pio.Trigger();
     efimon::CPUReadings *readingcpu =
         dynamic_cast<efimon::CPUReadings *>(pstat.GetReadings()[0]);
     efimon::RAMReadings *readingram =
         dynamic_cast<efimon::RAMReadings *>(pstat.GetReadings()[1]);
+    efimon::IOReadings *readingio =
+        dynamic_cast<efimon::IOReadings *>(pio.GetReadings()[0]);
     std::cout << "\tCPU usage: " << readingcpu->overall_usage << "%, ";
     std::cout << "RAM usage: " << readingram->overall_usage << " MiB, ";
-    std::cout << "Difference: " << readingram->difference << " us, ";
-    std::cout << "Timestamp: " << readingram->timestamp << " us" << std::endl;
+    std::cout << "I/O Read Volume: " << readingio->read_volume << " KiB, ";
+    std::cout << "I/O Write Volume: " << readingio->write_volume << " KiB, ";
+    std::cout << "I/O Read Bandwidth: " << readingio->read_bw << " KiB/s, ";
+    std::cout << "I/O Write Bandwidth: " << readingio->write_bw << " KiB/s, ";
+    std::cout << "Difference: " << readingram->difference << " ms, ";
+    std::cout << "Timestamp: " << readingram->timestamp << " ms" << std::endl;
     sleep(1);
   }
 
