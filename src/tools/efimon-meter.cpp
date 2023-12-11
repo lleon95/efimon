@@ -38,26 +38,36 @@ int main(int argc, char **argv) {
 
   std::cout << "--- Reading metrics every second for 15 seconds ---"
             << std::endl;
-  efimon::ProcStatObserver pstat{(uint)pid, efimon::ObserverScope::PROCESS, 1};
+  efimon::ProcStatObserver pprocstat{(uint)pid, efimon::ObserverScope::PROCESS,
+                                     1};
+  efimon::ProcStatObserver psysstat{0, efimon::ObserverScope::SYSTEM, 1};
   efimon::ProcIOObserver pio{(uint)pid, efimon::ObserverScope::PROCESS, 1};
 
   for (int i = 0; i <= 15; ++i) {
-    pstat.Trigger();
+    psysstat.Trigger();
+    pprocstat.Trigger();
     pio.Trigger();
     efimon::CPUReadings *readingcpu =
-        dynamic_cast<efimon::CPUReadings *>(pstat.GetReadings()[0]);
+        dynamic_cast<efimon::CPUReadings *>(pprocstat.GetReadings()[0]);
+    efimon::CPUReadings *readingsyscpu =
+        dynamic_cast<efimon::CPUReadings *>(psysstat.GetReadings()[0]);
     efimon::RAMReadings *readingram =
-        dynamic_cast<efimon::RAMReadings *>(pstat.GetReadings()[1]);
+        dynamic_cast<efimon::RAMReadings *>(pprocstat.GetReadings()[1]);
     efimon::IOReadings *readingio =
         dynamic_cast<efimon::IOReadings *>(pio.GetReadings()[0]);
-    std::cout << "\tCPU usage: " << readingcpu->overall_usage << "%, ";
-    std::cout << "RAM usage: " << readingram->overall_usage << " MiB, ";
-    std::cout << "I/O Read Volume: " << readingio->read_volume << " KiB, ";
-    std::cout << "I/O Write Volume: " << readingio->write_volume << " KiB, ";
-    std::cout << "I/O Read Bandwidth: " << readingio->read_bw << " KiB/s, ";
-    std::cout << "I/O Write Bandwidth: " << readingio->write_bw << " KiB/s, ";
-    std::cout << "Difference: " << readingram->difference << " ms, ";
-    std::cout << "Timestamp: " << readingram->timestamp << " ms" << std::endl;
+    std::cout << "\tTotal CPU: " << readingsyscpu->overall_usage << "%: ";
+    for (const auto val : readingsyscpu->core_usage) {
+      std::cout << val << "% ";
+    }
+    std::cout << "\tProcess CPU: " << readingcpu->overall_usage << "%";
+    std::cout << "\n\tRAM usage: " << readingram->overall_usage << " MiB, ";
+    std::cout << "\n\tI/O Read Vol: " << readingio->read_volume << " KiB, ";
+    std::cout << "I/O Write Vol: " << readingio->write_volume << " KiB, ";
+    std::cout << "I/O Read BW: " << readingio->read_bw << " KiB/s, ";
+    std::cout << "I/O Write BW: " << readingio->write_bw << " KiB/s, ";
+    std::cout << "\n\tDifference: " << readingcpu->difference << " ms, ";
+    std::cout << "Timestamp: " << readingcpu->timestamp << " ms" << std::endl
+              << std::endl;
     sleep(1);
   }
 
