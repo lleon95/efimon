@@ -15,7 +15,9 @@
 
 #include <algorithm>
 #include <cstring>
+#include <fstream>
 #include <numeric>
+#include <sstream>
 #include <vector>
 
 #define MAX_LEN_FILE_PATH 255
@@ -45,16 +47,17 @@ ProcStatObserver::ProcStatObserver(const uint pid, const ObserverScope scope,
                                    const uint64_t interval)
     : Observer{} {
   uint64_t type = static_cast<uint64_t>(ObserverType::CPU) |
-                  static_cast<uint64_t>(ObserverType::RAM) |
                   static_cast<uint64_t>(ObserverType::INTERVAL);
   this->pid_ = pid;
   this->interval_ = interval;
   this->status_ = Status{};
   this->caps_.emplace_back();
   this->caps_[0].type = type;
-
   if (ObserverScope::SYSTEM == scope) {
-    throw Status{Status::NOT_IMPLEMENTED, "System monitor not implemented"};
+    this->global_ = true;
+  } else {
+    this->global_ = false;
+    type |= static_cast<uint64_t>(ObserverType::RAM);
   }
   this->caps_[0].scope = scope;
   this->Reset();
@@ -64,17 +67,24 @@ ProcStatObserver::~ProcStatObserver() {}
 
 Status ProcStatObserver::Trigger() {
   /* Check if the process is alive */
-  CheckAlive();
-  if (Status::OK != this->status_.code) {
-    return status_;
+  if (!this->global_) {
+    CheckAlive();
+    if (Status::OK != this->status_.code) {
+      return status_;
+    }
   }
 
   /* Update the uptime */
-  this->uptime_ = GetUptime();
+  GetUptime();
 
   /* Get the ProcStat and process the results */
-  GetProcStat();
-  TranslateReadings();
+  if (!this->global_) {
+    GetProcStat();
+    TranslateReadings();
+  } else {
+    GetGlobalProcStat();
+    TranslateGlobalReadings();
+  }
 
   return Status{};
 }
@@ -82,7 +92,7 @@ Status ProcStatObserver::Trigger() {
 std::vector<Readings *> ProcStatObserver::GetReadings() {
   std::vector<Readings *> readings{};
   readings.push_back(&this->cpu_readings_);
-  readings.push_back(&this->ram_readings_);
+  if (!this->global_) readings.push_back(&this->ram_readings_);
   return readings;
 }
 
@@ -96,7 +106,10 @@ Status ProcStatObserver::SetScope(const ObserverScope /*scope*/) {
                 "Cannot select a device since it is not implemented"};
 }
 
-Status ProcStatObserver::SetPID(const uint /*pid*/) { return Status{}; }
+Status ProcStatObserver::SetPID(const uint pid) {
+  this->pid_ = pid;
+  return this->Reset();
+}
 
 ObserverScope ProcStatObserver::GetScope() const noexcept {
   return this->caps_[0].scope;
@@ -121,6 +134,8 @@ Status ProcStatObserver::ClearInterval() { return Status{}; }
 Status ProcStatObserver::Reset() {
   /* Resetting the structures is more than enough */
   std::memset(&this->proc_data_, 0, sizeof(ProcStatData));
+  std::memset(&this->proc_global_data_, 0,
+              MAX_NUM_CPUS * sizeof(ProcStatGlobalData));
   this->cpu_readings_.type = static_cast<uint>(ObserverType::NONE);
   this->cpu_readings_.timestamp = 0;
   this->cpu_readings_.difference = 0;
@@ -139,16 +154,21 @@ Status ProcStatObserver::Reset() {
 
 uint64_t ProcStatObserver::GetUptime() {
   float uptime = 0.f;
+  float uptime_idle = 0.f;
   FILE *proc_uptime_file = fopen("/proc/uptime", "r");
 
   if (proc_uptime_file == NULL) {
     return 0;
   }
 
-  fscanf(proc_uptime_file, "%f", &uptime);
+  fscanf(proc_uptime_file, "%f %f", &uptime, &uptime_idle);
   fclose(proc_uptime_file);
 
-  return static_cast<uint64_t>(uptime * sysconf(_SC_CLK_TCK)) * 10;
+  this->uptime_ = static_cast<uint64_t>(uptime * sysconf(_SC_CLK_TCK)) * 10;
+  this->uptime_idle_ =
+      static_cast<uint64_t>(uptime_idle * sysconf(_SC_CLK_TCK)) * 10;
+
+  return this->uptime_;
 }
 
 void ProcStatObserver::GetProcStat() {
@@ -209,7 +229,9 @@ void ProcStatObserver::TranslateReadings() noexcept {
 
   /* CPU-specific */
   uint64_t total = this->uptime_ - this->proc_data_.starttime;
-  uint64_t active = this->proc_data_.utime + this->proc_data_.stime;
+  uint64_t active = (this->proc_data_.utime + this->proc_data_.stime);
+  active *= 1000;
+  active /= sysconf(_SC_CLK_TCK);
 
   if (PROC_STATE_STOPPED == this->proc_data_.state ||
       PROC_STATE_DEAD == this->proc_data_.state) {
@@ -232,7 +254,7 @@ void ProcStatObserver::TranslateReadings() noexcept {
   float total_usage =
       100.f * ((float)diff_active / (float)diff_total);  // NOLINT
   this->cpu_readings_.overall_usage =
-      warmup ? 0.f : total_usage / total_processors;
+      warmup ? 0.f : total_usage / (float)total_processors;  // NOLINT
 
   /* Compute the RAM consumption. Factor 20 is MiB */
   this->ram_readings_.overall_usage =
@@ -253,6 +275,88 @@ void ProcStatObserver::TranslateReadings() noexcept {
             this->cpu_readings_.core_usage.end(), -1.f);
 }
 
-void ProcStatObserver::GetGlobalProcStat() {}
+void ProcStatObserver::GetGlobalProcStat() {
+  const uint32_t total_processors = sysconf(_SC_NPROCESSORS_ONLN);
+
+  std::string filename{"/proc/stat"};
+  std::ifstream fs{filename};
+
+  std::vector<std::string> values;
+  std::string intermediate, line;
+
+  /* Read the document */
+  for (uint32_t i = 0; (i <= total_processors) && (i < MAX_NUM_CPUS); ++i) {
+    /* Get every line */
+    std::getline(fs, line);
+    std::istringstream linestream(line);
+    /* Get each value from the line */
+    while (std::getline(linestream, intermediate, ' ')) {
+      values.push_back(intermediate);
+    }
+
+    /* Analyse the cases
+       Based on: https://man7.org/linux/man-pages/man5/proc.5.html */
+    uint32_t offset = 0 == i ? 2 : 1; /* Position of the first reading */
+    this->proc_global_data_[i].user = std::stoull(values.at(offset++));
+    this->proc_global_data_[i].nice = std::stoull(values.at(offset++));
+    this->proc_global_data_[i].system = std::stoull(values.at(offset++));
+    this->proc_global_data_[i].idle = std::stoull(values.at(offset++));
+    this->proc_global_data_[i].iowait = std::stoull(values.at(offset++));
+    this->proc_global_data_[i].cpu_idx = i - 1;
+
+    values.clear();
+  }
+}
+
+void ProcStatObserver::TranslateGlobalReadings() noexcept {
+  bool warmup = false;
+  uint32_t total_processors = sysconf(_SC_NPROCESSORS_ONLN);
+  uint64_t total_global_time = 0;
+
+  /* Base object */
+  this->cpu_readings_.type = static_cast<int>(ObserverType::CPU);
+  this->cpu_readings_.difference =
+      this->uptime_ - this->cpu_readings_.timestamp;
+  this->cpu_readings_.timestamp = this->uptime_;
+
+  /* Prepare vectors */
+  this->cpu_readings_.core_power.resize(total_processors);
+  this->cpu_readings_.core_usage.resize(total_processors);
+
+  /* CPU-specific */
+  for (uint32_t i = 0; (i <= total_processors) && (i < MAX_NUM_CPUS); ++i) {
+    /* Compute times for each core. The first is the total */
+    uint64_t total_active_time_ms =
+        (this->proc_global_data_[i].user + this->proc_global_data_[i].nice +
+         this->proc_global_data_[i].system + this->proc_global_data_[i].iowait +
+         this->proc_global_data_[i].idle * 0.01);
+    total_active_time_ms = total_active_time_ms * 100000 / sysconf(_SC_CLK_TCK);
+    uint64_t diff_total_time = this->uptime_ - this->proc_global_data_[i].total;
+    uint64_t diff_active_time =
+        total_active_time_ms - this->proc_global_data_[i].active;
+    this->proc_global_data_[i].total = this->uptime_;
+    this->proc_global_data_[i].active = total_active_time_ms;
+
+    /* Compute the percentage */
+    float total_usage =
+        ((float)diff_active_time / (float)diff_total_time);  // NOLINT
+
+    if (0 == i) {
+      total_global_time = total_usage;
+      continue;
+    }
+
+    /* Document the percentage per core*/
+    this->cpu_readings_.core_usage[i - 1] = total_usage;
+  }
+
+  this->cpu_readings_.overall_usage =
+      warmup ? 0.f : total_global_time / (float)total_processors;  // NOLINT
+
+  /* Not supported metrics */
+  this->cpu_readings_.overall_power = -1.f;
+  std::fill(this->cpu_readings_.core_power.begin(),
+            this->cpu_readings_.core_power.end(), -1.f);
+}
 
 } /* namespace efimon */
