@@ -253,4 +253,6 @@ void ProcStatObserver::TranslateReadings() noexcept {
             this->cpu_readings_.core_usage.end(), -1.f);
 }
 
+void ProcStatObserver::GetGlobalProcStat() {}
+
 } /* namespace efimon */
