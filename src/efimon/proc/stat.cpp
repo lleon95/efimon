@@ -188,12 +188,12 @@ void ProcStatObserver::GetProcStat() {
 
   fscanf(procfp,
          "%d %*s %c %*d %*d %*d %*d %*d %*u %*u %*u "
-         "%*u %*u %lu %lu %*d %*d %*d %*d %*d "
+         "%*u %*u %lu %lu %ld %ld %*d %*d %*d "
          "%*d %lu %lu %ld %*u %*p %*p %*p %*p "
          "%*p %*u %*u %*u %*u %*p %*u %*u %*d %d "
          "%*u %*u %*u %*u %*d %*p %*p %*p %*p %*p %*p %*p %*d",
-         &ps->pid, &ps->state, &ps->utime, &ps->stime, &ps->starttime,
-         &ps->vsize, &ps->rss, &ps->processor);
+         &ps->pid, &ps->state, &ps->utime, &ps->stime, &ps->cutime, &ps->cstime,
+         &ps->starttime, &ps->vsize, &ps->rss, &ps->processor);
 
   fclose(procfp);
 }
@@ -229,7 +229,8 @@ void ProcStatObserver::TranslateReadings() noexcept {
 
   /* CPU-specific */
   uint64_t total = this->uptime_ - this->proc_data_.starttime;
-  uint64_t active = (this->proc_data_.utime + this->proc_data_.stime);
+  uint64_t active = (this->proc_data_.utime + this->proc_data_.stime +
+                     this->proc_data_.cutime + this->proc_data_.cstime);
   active *= 1000;
   active /= sysconf(_SC_CLK_TCK);
 

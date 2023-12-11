@@ -46,6 +46,12 @@ class ProcStatObserver : public Observer {
     /** Amount of time that this process has been scheduled in kernel mode,
     measured in clock ticks */
     uint64_t stime;
+    /** Amount of time that this process has been waiting scheduled in
+    user mode, measured in clock ticks */
+    int64_t cutime;
+    /** Amount of time that this process has been waiting scheduled in
+    kernel mode, measured in clock ticks */
+    int64_t cstime;
     /** The time the process started after system boot. Measured in clock
     ticks */
     uint64_t starttime;
