@@ -13,6 +13,7 @@
 #include <efimon/arg-parser.hpp>
 #include <efimon/observer-enums.hpp>
 #include <efimon/proc/io.hpp>
+#include <efimon/proc/meminfo.hpp>
 #include <efimon/proc/stat.hpp>
 #include <efimon/proc/thread-tree.hpp>
 
@@ -41,16 +42,20 @@ int main(int argc, char **argv) {
   efimon::ProcStatObserver pprocstat{(uint)pid, efimon::ObserverScope::PROCESS,
                                      1};
   efimon::ProcStatObserver psysstat{0, efimon::ObserverScope::SYSTEM, 1};
+  efimon::ProcMemInfoObserver pmeminfo{0, efimon::ObserverScope::SYSTEM, 1};
   efimon::ProcIOObserver pio{(uint)pid, efimon::ObserverScope::PROCESS, 1};
 
   for (int i = 0; i <= 15; ++i) {
     psysstat.Trigger();
     pprocstat.Trigger();
     pio.Trigger();
+    pmeminfo.Trigger();
     efimon::CPUReadings *readingcpu =
         dynamic_cast<efimon::CPUReadings *>(pprocstat.GetReadings()[0]);
     efimon::CPUReadings *readingsyscpu =
         dynamic_cast<efimon::CPUReadings *>(psysstat.GetReadings()[0]);
+    efimon::RAMReadings *readingsysram =
+        dynamic_cast<efimon::RAMReadings *>(pmeminfo.GetReadings()[0]);
     efimon::RAMReadings *readingram =
         dynamic_cast<efimon::RAMReadings *>(pprocstat.GetReadings()[1]);
     efimon::IOReadings *readingio =
@@ -60,7 +65,9 @@ int main(int argc, char **argv) {
       std::cout << val << "% ";
     }
     std::cout << "\tProcess CPU: " << readingcpu->overall_usage << "%";
-    std::cout << "\n\tRAM usage: " << readingram->overall_usage << " MiB, ";
+    std::cout << "\n\tTotal RAM: usage: " << readingsysram->overall_usage
+              << " MiB, Process RAM usage: " << readingram->overall_usage
+              << " MiB";
     std::cout << "\n\tI/O Read Vol: " << readingio->read_volume << " KiB, ";
     std::cout << "I/O Write Vol: " << readingio->write_volume << " KiB, ";
     std::cout << "I/O Read BW: " << readingio->read_bw << " KiB/s, ";

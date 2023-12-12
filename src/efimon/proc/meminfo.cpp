@@ -154,7 +154,14 @@ void ProcMemInfoObserver::GetProcMemInfo() {
 }
 
 void ProcMemInfoObserver::TranslateReadings() noexcept {
+  /* Base object */
+  this->ram_readings_.type = static_cast<int>(ObserverType::IO);
+  this->ram_readings_.difference =
+      this->uptime_ - this->ram_readings_.timestamp;
+  this->ram_readings_.timestamp = this->uptime_;
+
   /* Compute the RAM consumption. Factor 10 converts from KiB to MiB */
+  this->ram_readings_.type = static_cast<int>(ObserverType::RAM);
   this->ram_readings_.overall_usage =
       (this->proc_data_.phys_total - this->proc_data_.phys_available) >> 10;
   this->ram_readings_.swap_usage =
