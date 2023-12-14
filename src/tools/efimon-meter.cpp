@@ -14,6 +14,7 @@
 #include <efimon/observer-enums.hpp>
 #include <efimon/proc/io.hpp>
 #include <efimon/proc/meminfo.hpp>
+#include <efimon/proc/net.hpp>
 #include <efimon/proc/stat.hpp>
 #include <efimon/proc/thread-tree.hpp>
 
@@ -44,12 +45,16 @@ int main(int argc, char **argv) {
   efimon::ProcStatObserver psysstat{0, efimon::ObserverScope::SYSTEM, 1};
   efimon::ProcMemInfoObserver pmeminfo{0, efimon::ObserverScope::SYSTEM, 1};
   efimon::ProcIOObserver pio{(uint)pid, efimon::ObserverScope::PROCESS, 1};
+  efimon::ProcNetObserver pnet{0, efimon::ObserverScope::SYSTEM, 1};
 
+  std::cout << "\nReadings: " << std::endl;
   for (int i = 0; i <= 15; ++i) {
     psysstat.Trigger();
     pprocstat.Trigger();
     pio.Trigger();
     pmeminfo.Trigger();
+    pnet.Trigger();
+    auto netreadings = pnet.GetReadings();
     efimon::CPUReadings *readingcpu =
         dynamic_cast<efimon::CPUReadings *>(pprocstat.GetReadings()[0]);
     efimon::CPUReadings *readingsyscpu =
@@ -71,7 +76,18 @@ int main(int argc, char **argv) {
     std::cout << "\n\tI/O Read Vol: " << readingio->read_volume << " KiB, ";
     std::cout << "I/O Write Vol: " << readingio->write_volume << " KiB, ";
     std::cout << "I/O Read BW: " << readingio->read_bw << " KiB/s, ";
-    std::cout << "I/O Write BW: " << readingio->write_bw << " KiB/s, ";
+    std::cout << "I/O Write BW: " << readingio->write_bw << " KiB/s"
+              << std::endl;
+    for (auto preading : netreadings) {
+      efimon::NetReadings *readingnet =
+          dynamic_cast<efimon::NetReadings *>(preading);
+      std::cout << "\tNetIface: " << readingnet->dev_name
+                << ": TX Vol: " << readingnet->overall_tx_volume
+                << " KiB, RX Vol: " << readingnet->overall_rx_volume
+                << " KiB, TX BW: " << readingnet->overall_tx_bw
+                << " KiB/sec, RX BW: " << readingnet->overall_rx_bw
+                << " KiB/sec" << std::endl;
+    }
     std::cout << "\n\tDifference: " << readingcpu->difference << " ms, ";
     std::cout << "Timestamp: " << readingcpu->timestamp << " ms" << std::endl
               << std::endl;
