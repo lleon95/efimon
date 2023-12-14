@@ -9,6 +9,7 @@ lib_efimon_sources += [
   files('arg-parser.cpp'),
   files('proc/io.cpp'),
   files('proc/meminfo.cpp'),
+  files('proc/net.cpp'),
   files('proc/stat.cpp'),
   files('proc/thread-tree.cpp'),
 ]
