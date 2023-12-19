@@ -24,7 +24,7 @@ namespace efimon {
 /**
  * @brief Observer class that queries /proc/net/dev
  *
- * This measures the Net usage
+ * This measures the Network usage
  */
 class ProcNetObserver : public Observer {
  public:
@@ -33,8 +33,8 @@ class ProcNetObserver : public Observer {
   /**
    * @brief Construct a new Proc Net Observer
    *
-   * @param pid process id (it is specific to processes)
-   * @param scope if defined as ObserverScope::SYSTEM, pid is ignored
+   * @param pid process id (ignored)
+   * @param scope only ObserverScope::SYSTEM is valid
    * @param interval interval of how often the proc is queried. 0 for manual
    * query
    */
@@ -80,7 +80,7 @@ class ProcNetObserver : public Observer {
 
   /**
    * @brief Set the process PID in case that the scope is
-   * ObserverScope::PROCESS
+   * ObserverScope::PROCESS (Ignored)
    *
    * @param pid process ID
    * @return Status of the transaction
@@ -97,7 +97,7 @@ class ProcNetObserver : public Observer {
   /**
    * @brief Get the process ID in case of a process-specific instance
    *
-   * @return process ID
+   * @return process ID. Not valid
    */
   uint GetPID() const noexcept override;
 
@@ -178,7 +178,7 @@ class ProcNetObserver : public Observer {
   uint64_t GetUptime();
 
   /**
-   * @brief Read the /proc/meminfo file
+   * @brief Read the /proc/net/dev file
    *
    */
   void GetProcNetDev();

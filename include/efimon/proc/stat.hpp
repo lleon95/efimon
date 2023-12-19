@@ -71,7 +71,7 @@ class ProcStatObserver : public Observer {
   } ProcStatData;
 
   /**
-   * @brief Payload structure extracted from /proc/pid/stat
+   * @brief Payload structure extracted from /proc/stat
    *
    * This intends to hold the information for a single CPU core. The final must
    * be an array of structs.

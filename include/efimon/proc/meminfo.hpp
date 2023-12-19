@@ -20,7 +20,7 @@
 namespace efimon {
 
 /**
- * @brief Observer class that queries /proc/pid/meminfo
+ * @brief Observer class that queries /proc/meminfo
  *
  * This measures the IO usage
  */
@@ -29,7 +29,7 @@ class ProcMemInfoObserver : public Observer {
   ProcMemInfoObserver() = delete;
 
   /**
-   * @brief Payload structure extracted from /proc/pid/meminfo
+   * @brief Payload structure extracted from /proc/meminfo
    *
    */
   typedef struct {
@@ -44,10 +44,10 @@ class ProcMemInfoObserver : public Observer {
   } ProcMemInfoData;
 
   /**
-   * @brief Construct a new Proc IO Observer
+   * @brief Construct a new Proc MemInfo Observer
    *
-   * @param pid process id (it is specific to processes)
-   * @param scope if defined as ObserverScope::SYSTEM, pid is ignored
+   * @param pid process id (Ignored)
+   * @param scope only ObserverScope::SYSTEM supported
    * @param interval interval of how often the proc is queried. 0 for manual
    * query
    */
@@ -84,7 +84,7 @@ class ProcMemInfoObserver : public Observer {
   Status SelectDevice(const uint device) override;
 
   /**
-   * @brief Set the Scope of the Observer instance
+   * @brief Set the Scope of the Observer instance. Not implemented
    *
    * @param scope instance scope, if it is process-specific or system-wide
    * @return Status of the transaction
@@ -93,7 +93,7 @@ class ProcMemInfoObserver : public Observer {
 
   /**
    * @brief Set the process PID in case that the scope is
-   * ObserverScope::PROCESS
+   * ObserverScope::PROCESS. Ignored
    *
    * @param pid process ID
    * @return Status of the transaction
@@ -110,7 +110,7 @@ class ProcMemInfoObserver : public Observer {
   /**
    * @brief Get the process ID in case of a process-specific instance
    *
-   * @return process ID
+   * @return process ID. Not valid in MemInfo
    */
   uint GetPID() const noexcept override;
 
