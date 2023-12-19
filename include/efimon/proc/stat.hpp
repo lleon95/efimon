@@ -18,6 +18,8 @@
 #include <efimon/readings/ram-readings.hpp>
 #include <efimon/status.hpp>
 
+#define MAX_NUM_CPUS 1024
+
 namespace efimon {
 
 /**
@@ -44,6 +46,12 @@ class ProcStatObserver : public Observer {
     /** Amount of time that this process has been scheduled in kernel mode,
     measured in clock ticks */
     uint64_t stime;
+    /** Amount of time that this process has been waiting scheduled in
+    user mode, measured in clock ticks */
+    int64_t cutime;
+    /** Amount of time that this process has been waiting scheduled in
+    kernel mode, measured in clock ticks */
+    int64_t cstime;
     /** The time the process started after system boot. Measured in clock
     ticks */
     uint64_t starttime;
@@ -61,6 +69,31 @@ class ProcStatObserver : public Observer {
     /** Foreign: active time of the process*/
     uint64_t active;
   } ProcStatData;
+
+  /**
+   * @brief Payload structure extracted from /proc/stat
+   *
+   * This intends to hold the information for a single CPU core. The final must
+   * be an array of structs.
+   */
+  typedef struct {
+    /** Time spent in user mode. */
+    uint64_t user;
+    /** Time spent in user mode with low priority (nice) */
+    uint64_t nice;
+    /** Time spent in system mode. */
+    uint64_t system;
+    /** Time spent in the idle task. USER_HZ times second value of uptime */
+    uint64_t idle;
+    /** Time waiting for I/O to complete */
+    uint64_t iowait;
+    /** Processor index */
+    uint32_t cpu_idx;
+    /** Foreign: active time of the process*/
+    uint64_t active;
+    /** Foreign: total time spent by the process */
+    uint64_t total;
+  } ProcStatGlobalData;
 
   /**
    * @brief Construct a new Proc Stat Observer
@@ -186,12 +219,18 @@ class ProcStatObserver : public Observer {
   bool alive_;
   /** Proccess data payload when reading /proc/pid/stat */
   ProcStatData proc_data_;
+  /** Proccess data payload when reading /proc/stat */
+  ProcStatGlobalData proc_global_data_[MAX_NUM_CPUS];
   /** Readings from the CPU */
   CPUReadings cpu_readings_;
   /** Readings from the RAM */
   RAMReadings ram_readings_;
   /** Uptime */
   uint64_t uptime_;
+  /** Uptime in idle processes */
+  uint64_t uptime_idle_;
+  /** The observer is a global system-wide observer*/
+  bool global_;
 
   /**
    * @brief Get the system uptime
@@ -207,6 +246,11 @@ class ProcStatObserver : public Observer {
   void GetProcStat();
 
   /**
+   * @brief Read the /proc/stat for all
+   */
+  void GetGlobalProcStat();
+
+  /**
    * @brief Check if the process is still alive
    */
   void CheckAlive();
@@ -215,6 +259,11 @@ class ProcStatObserver : public Observer {
    * @brief Translate the readings from ProcStatData to CPUReadings
    */
   void TranslateReadings() noexcept;
+
+  /**
+   * @brief Translate the readings from ProcStatGlobalData to CPUReadings
+   */
+  void TranslateGlobalReadings() noexcept;
 };
 
 } /* namespace efimon */
