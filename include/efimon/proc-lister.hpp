@@ -46,7 +46,7 @@ class ProcessLister {
    *
    * @return std::vector<Process> with the last processes detected
    */
-  std::vector<Process> GetLast() noexcept { return last_; }
+  const std::vector<Process>& GetLast() noexcept { return last_; }
 
   /**
    * @brief Get the processes which does not appear anymore
@@ -55,7 +55,7 @@ class ProcessLister {
    *
    * @return std::vector<Process> with the dead processes detected
    */
-  std::vector<Process> GetDead() noexcept { return dead_; }
+  const std::vector<Process>& GetDead() noexcept { return dead_; }
 
   /**
    * @brief Get the processes which newly appeared
@@ -64,7 +64,7 @@ class ProcessLister {
    *
    * @return std::vector<Process> with the new processes detected
    */
-  std::vector<Process> GetNew() noexcept { return new_; }
+  const std::vector<Process>& GetNew() noexcept { return new_; }
 
   /**
    * @brief Refresh the lists

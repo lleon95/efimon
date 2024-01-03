@@ -42,10 +42,15 @@ Status ProcPsProcessLister::Detect() {
       return p1.pid == proc.pid;
     };
     auto it = std::find_if(this->last_.begin(), this->last_.end(), find_crit);
-    if (it == this->last_.end())
-      this->new_.emplace_back(proc);
-    else
-      this->dead_.emplace_back(proc);
+    if (it == this->last_.end()) this->new_.emplace_back(proc);
+  }
+
+  for (auto& proc : this->last_) {
+    auto find_crit = [&](ProcessLister::Process p1) {
+      return p1.pid == proc.pid;
+    };
+    auto it = std::find_if(detected.begin(), detected.end(), find_crit);
+    if (it == detected.end()) this->dead_.emplace_back(proc);
   }
 
   this->last_.clear();
