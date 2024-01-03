@@ -9,6 +9,7 @@
 #ifndef INCLUDE_EFIMON_PROC_LISTER_HPP_
 #define INCLUDE_EFIMON_PROC_LISTER_HPP_
 
+#include <string>
 #include <vector>
 
 #include <efimon/status.hpp>
@@ -27,29 +28,43 @@ namespace efimon {
 class ProcessLister {
  public:
   /**
+   * @brief Process struct of the lister
+   *
+   * This summarises some information about the user
+   */
+  struct Process {
+    /** Process ID */
+    int pid;
+    /** Name of the owner */
+    std::string owner;
+    /** Command line in string*/
+    std::string cmd;
+  };
+
+  /**
    * @brief Get the Last processes
    *
-   * @return std::vector<int> with the last processes detected
+   * @return std::vector<Process> with the last processes detected
    */
-  std::vector<int> GetLast() noexcept { return last_; }
+  std::vector<Process> GetLast() noexcept { return last_; }
 
   /**
    * @brief Get the processes which does not appear anymore
    *
    * Invoking this function clears the vector
    *
-   * @return std::vector<int> with the dead processes detected
+   * @return std::vector<Process> with the dead processes detected
    */
-  std::vector<int> GetDead() noexcept { return dead_; }
+  std::vector<Process> GetDead() noexcept { return dead_; }
 
   /**
    * @brief Get the processes which newly appeared
    *
    * Invoking this function clears the vector
    *
-   * @return std::vector<int> with the new processes detected
+   * @return std::vector<Process> with the new processes detected
    */
-  std::vector<int> GetNew() noexcept { return new_; }
+  std::vector<Process> GetNew() noexcept { return new_; }
 
   /**
    * @brief Refresh the lists
@@ -65,13 +80,13 @@ class ProcessLister {
 
  protected:
   /** Lastly detected */
-  std::vector<int> last_;
+  std::vector<Process> last_;
 
   /** Dead */
-  std::vector<int> dead_;
+  std::vector<Process> dead_;
 
   /** New */
-  std::vector<int> new_;
+  std::vector<Process> new_;
 };
 
 } /* namespace efimon */
