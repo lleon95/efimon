@@ -40,6 +40,7 @@ class Status : public std::exception {
     MEMBER_ABSENT,       /** Missing member */
     RESOURCE_BUSY,       /** Busy */
     NOT_FOUND,           /** Reosurce not found */
+    LOGGER_CANNOT_OPEN,  /** Logger cannot be open */
   };
 
   /**
