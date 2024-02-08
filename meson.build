@@ -25,6 +25,15 @@ project_deps = []
 c_args = []
 cpp_args = []
 
+# Find proc library
+cpp = meson.get_compiler('cpp')
+libprocps_dep = cpp.find_library('libprocps', required: true)
+project_deps += libprocps_dep
+
+# Find SQLite3
+sqlite_dep = dependency('sqlite3', required: true)
+project_deps += sqlite_dep
+
 # -----------------------------------------------------------------------------
 # Developer mode options
 # -----------------------------------------------------------------------------

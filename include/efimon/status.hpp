@@ -34,12 +34,14 @@ class Status : public std::exception {
     /** Incompatible parameter that it is not supported
                               by a function */
     INCOMPATIBLE_PARAMETER,
-    CONFIGURATION_ERROR, /** Configuration error*/
-    REGISTER_IO_ERROR,   /** Register MMIO error */
-    NOT_IMPLEMENTED,     /** Not implemented error */
-    MEMBER_ABSENT,       /** Missing member */
-    RESOURCE_BUSY,       /** Busy */
-    NOT_FOUND,           /** Reosurce not found */
+    CONFIGURATION_ERROR,  /** Configuration error*/
+    REGISTER_IO_ERROR,    /** Register MMIO error */
+    NOT_IMPLEMENTED,      /** Not implemented error */
+    MEMBER_ABSENT,        /** Missing member */
+    RESOURCE_BUSY,        /** Busy */
+    NOT_FOUND,            /** Reosurce not found */
+    LOGGER_CANNOT_OPEN,   /** Logger cannot be open */
+    LOGGER_CANNOT_INSERT, /*** Logger incapable to insert new row */
   };
 
   /**
