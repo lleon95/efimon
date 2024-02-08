@@ -9,6 +9,7 @@
 #ifndef INCLUDE_EFIMON_LOGGER_HPP_
 #define INCLUDE_EFIMON_LOGGER_HPP_
 
+#include <memory>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -29,7 +30,7 @@ class Logger {
     /** The field does not have a type and it is treated as binary */
     NONE = 0,
     /** The field is an integer */
-    INTEGER,
+    INTEGER64,
     /** The field is a floating-point / real number */
     FLOAT,
     /** The field is a string */
@@ -38,25 +39,30 @@ class Logger {
 
   struct IValue {
     FieldType type;
+    virtual void Placeholder() = 0;
+    virtual ~IValue() = default;
   };
 
   template <class T>
   struct Value : public IValue {
     T val;
 
-    Value() {
+    explicit Value(const T val_a) {
       this->val = T{};
       if constexpr (std::is_integral<T>::value)
-        this->type = FieldType::INTEGER;
+        this->type = FieldType::INTEGER64;
       else if constexpr (std::is_floating_point<T>::value)
         this->type = FieldType::FLOAT;
       else if constexpr (std::is_same<T, std::string>::value)
         this->type = FieldType::STRING;
       else
         this->type = FieldType::NONE;
+      val = val_a;
     }
 
     void operator()(const T value) noexcept { val = value; }
+
+    void Placeholder() override {}
 
     virtual ~Value() = default;
   };
@@ -76,7 +82,7 @@ class Logger {
   */
 
   virtual Status InsertColumn(
-      const std::unordered_map<std::string, IValue> &vals) = 0;
+      const std::unordered_map<std::string, std::shared_ptr<IValue>> &vals) = 0;
 
   virtual ~Logger() = default;
 };

@@ -8,7 +8,9 @@
 
 #include <efimon/logger/sqlite.hpp>
 
+#include <cstdint>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -17,15 +19,64 @@
 
 namespace efimon {
 static std::unordered_map<Logger::FieldType, std::string> kSqlMapping = {
-    {Logger::FieldType::INTEGER, "INT"},
+    {Logger::FieldType::INTEGER64, "INT64"},
     {Logger::FieldType::FLOAT, "REAL"},
     {Logger::FieldType::STRING, "TEXT"},
 };
 
+std::string SQLiteLogger::Stringify(const std::shared_ptr<Logger::IValue> val) {
+  switch (val->type) {
+    case Logger::FieldType::INTEGER64: {
+      auto valc = std::dynamic_pointer_cast<const Logger::Value<int64_t>>(val);
+      if (!valc) return std::string{};
+      return std::to_string(valc->val);
+    }
+    case Logger::FieldType::FLOAT: {
+      auto valc = std::dynamic_pointer_cast<const Logger::Value<float>>(val);
+      if (!valc) return std::string{};
+      return std::to_string(valc->val);
+    }
+    case Logger::FieldType::STRING: {
+      auto valc =
+          std::dynamic_pointer_cast<const Logger::Value<std::string>>(val);
+      if (!valc) return std::string{};
+      return std::string("'") + valc->val + std::string("'");
+    }
+    default:
+      break;
+  }
+  return std::string{};
+}
+
 Status SQLiteLogger::InsertColumn(
-    const std::unordered_map<std::string, Logger::IValue> &vals) {
+    const std::unordered_map<std::string, std::shared_ptr<IValue>> &vals) {
+  std::string sql = std::string("INSERT INTO ") + this->tablename_;
+  std::string fields = "";
+  std::string values = "";
+  char *zErrMsg = 0;
+  int rc = 0;
+
   for (const auto &val : vals) {
-    std::cout << "Value type: " << std::get<0>(val) << std::endl;
+    /* Fill fields */
+    if (!fields.empty()) fields += ",";
+    fields += std::get<0>(val);
+
+    /* Fill values */
+    if (!values.empty()) values += ",";
+    values += Stringify(std::get<1>(val));
+  }
+
+  /* Complete SQL statement */
+  sql += std::string(" (") + fields + std::string(") ");
+  sql += std::string("VALUES (") + values + ");";
+
+  /* Execute SQL statement */
+  rc = sqlite3_exec(this->database_, sql.c_str(), nullptr, 0, &zErrMsg);
+  if (rc) {
+    std::string msg = std::string(zErrMsg);
+    sqlite3_free(zErrMsg);
+    throw Status{Status::LOGGER_CANNOT_INSERT,
+                 std::string("Logger Err: ") + msg};
   }
   return Status{};
 }
@@ -48,19 +99,20 @@ SQLiteLogger::SQLiteLogger(const std::string &filename,
   }
 
   /* Create the table */
-  std::string sql =
-      std::string("CREATE TABLE ") + this->tablename_ + std::string("(");
-  sql += "ID INT PRIMARY KEY NOT NULL";
+  std::string sql = std::string("CREATE TABLE IF NOT EXISTS ") +
+                    this->tablename_ + std::string("(");
+  sql += "ID INTEGER PRIMARY KEY";
 
   for (auto &field : fields) {
     table_map_[std::get<0>(field)] = std::get<1>(field);
     sql += std::string(", ") + std::string(std::get<0>(field)) +
            std::string(" ") + kSqlMapping[std::get<1>(field)];
   }
-  sql += ", Timestamp DATETIME DEFAULT CURRENT_TIMESTAMP";
+  sql +=
+      ", Timestamp DATETIME DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now', "
+      "'localtime'))";
 
   sql += ");";
-  std::cout << "Table:\n" << sql << std::endl;
 
   /* Execute SQL statement */
   rc = sqlite3_exec(this->database_, sql.c_str(), nullptr, 0, &zErrMsg);
@@ -70,11 +122,11 @@ SQLiteLogger::SQLiteLogger(const std::string &filename,
     sqlite3_free(zErrMsg);
     sqlite3_close(this->database_);
     this->database_ = nullptr;
-    throw Status{Status::LOGGER_CANNOT_OPEN, msg};
+    throw Status{Status::LOGGER_CANNOT_OPEN, std::string("Logger Err: ") + msg};
   }
 }
 
-SQLiteLogge::~SQLiteLogger() {
+SQLiteLogger::~SQLiteLogger() {
   if (this->database_) {
     sqlite3_close(this->database_);
     this->database_ = nullptr;

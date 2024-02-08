@@ -9,6 +9,7 @@
 #ifndef INCLUDE_EFIMON_LOGGER_SQLITE_HPP_
 #define INCLUDE_EFIMON_LOGGER_SQLITE_HPP_
 
+#include <memory>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -26,7 +27,8 @@ class SQLiteLogger : public Logger {
                const std::vector<MapTuple> &fields);
 
   Status InsertColumn(
-      const std::unordered_map<std::string, Logger::IValue> &vals) override;
+      const std::unordered_map<std::string, std::shared_ptr<Logger::IValue>>
+          &vals) override;
 
   virtual ~SQLiteLogger();
 
@@ -35,6 +37,8 @@ class SQLiteLogger : public Logger {
   std::string tablename_;
   std::unordered_map<std::string, FieldType> table_map_;
   sqlite3 *database_;
+
+  std::string Stringify(const std::shared_ptr<Logger::IValue> val);
 };
 } /* namespace efimon */
 
