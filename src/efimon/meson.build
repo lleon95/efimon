@@ -14,4 +14,5 @@ lib_efimon_sources += [
   files('proc/stat.cpp'),
   files('proc/thread-tree.cpp'),
   files('logger/sqlite.cpp'),
+  files('perf/record.cpp'),
 ]
