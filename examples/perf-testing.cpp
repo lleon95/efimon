@@ -7,10 +7,10 @@
  */
 
 #include <cstdlib>
+#include <efimon/perf/record-readings.hpp>
+#include <efimon/perf/record.hpp>
 #include <iostream>
 #include <string>
-
-#include <efimon/perf/record.hpp>
 
 using namespace efimon;  // NOLINT
 
@@ -22,5 +22,10 @@ int main(int argc, char **argv) {
   uint pid = std::atoi(argv[1]);
   PerfRecordObserver record{pid, ObserverScope::PROCESS, 30, 1000, true};
   record.Trigger();
+  auto readings = dynamic_cast<RecordReadings *>(record.GetReadings()[0]);
+
+  std::cout << "Results saved in: " << readings->perf_data_path << std::endl;
+  std::cout << "Timestamp: " << readings->timestamp << std::endl;
+  std::cout << "Difference: " << readings->difference << std::endl;
   return 0;
 }

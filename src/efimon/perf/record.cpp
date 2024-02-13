@@ -15,6 +15,8 @@
 
 namespace efimon {
 
+extern uint64_t GetUptime();
+
 PerfRecordObserver::PerfRecordObserver(const uint pid,
                                        const ObserverScope /* scope */,
                                        const uint64_t interval,
@@ -60,10 +62,15 @@ void PerfRecordObserver::DisposeTemporaryFolder() {
 }
 
 Status PerfRecordObserver::Trigger() {
-  std::cout << this->perf_cmd_ << std::endl;
+  auto target_path = this->tmp_folder_path_ / "perf.data.ulock";
   std::system(this->perf_cmd_.c_str());
-  this->MovePerfData(this->tmp_folder_path_ / "perf.data",
-                     this->tmp_folder_path_ / "perf.data.ulock");
+  this->MovePerfData(this->tmp_folder_path_ / "perf.data", target_path);
+
+  auto time = GetUptime();
+  this->readings_.perf_data_path = std::string(this->path_to_perf_data_);
+  this->readings_.type = static_cast<uint64_t>(ObserverType::CPU);
+  this->readings_.difference = time - this->readings_.timestamp;
+  this->readings_.timestamp = time;
   return Status{};
 }
 
@@ -108,7 +115,13 @@ Status PerfRecordObserver::ClearInterval() {
                 "The clear interval is not implemented yet"};
 }
 
-Status PerfRecordObserver::Reset() { return Status{}; }
+Status PerfRecordObserver::Reset() {
+  this->readings_.perf_data_path = "";
+  this->readings_.type = static_cast<uint>(ObserverType::NONE);
+  this->readings_.timestamp = 0;
+  this->readings_.difference = 0;
+  return Status{};
+}
 
 PerfRecordObserver::~PerfRecordObserver() { this->DisposeTemporaryFolder(); }
 } /* namespace efimon */
