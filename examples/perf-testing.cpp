@@ -7,6 +7,7 @@
  */
 
 #include <cstdlib>
+#include <efimon/perf/annotate.hpp>
 #include <efimon/perf/record-readings.hpp>
 #include <efimon/perf/record.hpp>
 #include <iostream>
@@ -21,7 +22,9 @@ int main(int argc, char **argv) {
 
   uint pid = std::atoi(argv[1]);
   PerfRecordObserver record{pid, ObserverScope::PROCESS, 30, 1000, true};
+  PerfAnnotateObserver annotate{record};
   record.Trigger();
+  annotate.Trigger();
   auto readings = dynamic_cast<RecordReadings *>(record.GetReadings()[0]);
 
   std::cout << "Results saved in: " << readings->perf_data_path << std::endl;
