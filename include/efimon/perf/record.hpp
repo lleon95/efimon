@@ -10,14 +10,14 @@
 #ifndef INCLUDE_EFIMON_PERF_RECORD_HPP_
 #define INCLUDE_EFIMON_PERF_RECORD_HPP_
 
+#include <efimon/observer-enums.hpp>
+#include <efimon/observer.hpp>
+#include <efimon/perf/record-readings.hpp>
+#include <efimon/readings.hpp>
+#include <efimon/status.hpp>
 #include <filesystem>
 #include <string>
 #include <vector>
-
-#include <efimon/observer-enums.hpp>
-#include <efimon/observer.hpp>
-#include <efimon/readings.hpp>
-#include <efimon/status.hpp>
 
 namespace efimon {
 
@@ -115,8 +115,8 @@ class PerfRecordObserver : public Observer {
    *
    * @return vector of capabilities
    */
-  const std::vector<ObserverCapabilities>& GetCapabilities() const
-      noexcept override;
+  const std::vector<ObserverCapabilities>& GetCapabilities()
+      const noexcept override;
 
   /**
    * @brief Get the Status of the Observer
@@ -174,6 +174,8 @@ class PerfRecordObserver : public Observer {
   std::filesystem::path tmp_folder_path_;
   /** No dispose results */
   bool no_dispose_;
+  /** Readings */
+  RecordReadings readings_;
 
   /**
    * @brief Fills the perf command based on the provided arguments

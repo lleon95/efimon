@@ -7,11 +7,8 @@
  * @copyright Copyright (c) 2024. See License for Licensing
  */
 
-#include <efimon/perf/record.hpp>
-
-#include <unistd.h>
-
 #include <cstdlib>
+#include <efimon/perf/record.hpp>
 #include <filesystem>
 #include <iostream>
 #include <string>
@@ -49,9 +46,6 @@ void PerfRecordObserver::MakePerfCommand() {
   this->perf_cmd_ += std::to_string(this->pid_);
   this->perf_cmd_ += " -a sleep ";
   this->perf_cmd_ += std::to_string(this->interval_);
-  this->perf_cmd_ += " &> ";
-  this->perf_cmd_ +=
-      std::string(this->tmp_folder_path_ / std::string("perf.log"));
 }
 
 void PerfRecordObserver::MovePerfData(const std::filesystem::path& ipath,
@@ -68,22 +62,22 @@ void PerfRecordObserver::DisposeTemporaryFolder() {
 Status PerfRecordObserver::Trigger() {
   std::cout << this->perf_cmd_ << std::endl;
   std::system(this->perf_cmd_.c_str());
-  sleep(this->interval_ + 1);
   this->MovePerfData(this->tmp_folder_path_ / "perf.data",
                      this->tmp_folder_path_ / "perf.data.ulock");
   return Status{};
 }
 
 std::vector<Readings*> PerfRecordObserver::GetReadings() {
-  return std::vector<Readings*>{};
+  return std::vector<Readings*>{static_cast<Readings*>(&(this->readings_))};
 }
 
 Status PerfRecordObserver::SelectDevice(const uint /* device */) {
-  return Status{};
+  return Status{Status::NOT_IMPLEMENTED, "Cannot select a device"};
 }
 
-Status PerfRecordObserver::SetScope(const ObserverScope /* scope */) {
-  return Status{};
+Status PerfRecordObserver::SetScope(const ObserverScope scope) {
+  if (ObserverScope::PROCESS == scope) return Status{};
+  return Status{Status::NOT_IMPLEMENTED, "The scope is only set to PROCESS"};
 }
 
 Status PerfRecordObserver::SetPID(const uint pid) {
@@ -109,7 +103,10 @@ Status PerfRecordObserver::SetInterval(const uint64_t interval) {
   return Status{};
 }
 
-Status PerfRecordObserver::ClearInterval() { return Status{}; }
+Status PerfRecordObserver::ClearInterval() {
+  return Status{Status::NOT_IMPLEMENTED,
+                "The clear interval is not implemented yet"};
+}
 
 Status PerfRecordObserver::Reset() { return Status{}; }
 
