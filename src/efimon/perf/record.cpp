@@ -57,6 +57,8 @@ void PerfRecordObserver::MakePerfCommand() {
 void PerfRecordObserver::MovePerfData(const std::filesystem::path& ipath,
                                       const std::filesystem::path& opath) {
   std::filesystem::copy_file(ipath, opath);
+  this->valid_ = true;
+  this->path_to_perf_data_ = opath;
 }
 
 void PerfRecordObserver::DisposeTemporaryFolder() {

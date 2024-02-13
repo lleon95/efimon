@@ -169,7 +169,7 @@ class PerfRecordObserver : public Observer {
   /** Command to perform the perf record */
   std::string perf_cmd_;
   /** Path to the perf.data file */
-  std::string path_to_perf_data_;
+  std::filesystem::path path_to_perf_data_;
   /** Path to the temporary folder */
   std::filesystem::path tmp_folder_path_;
   /** No dispose results */
