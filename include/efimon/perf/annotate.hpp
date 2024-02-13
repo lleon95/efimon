@@ -1,19 +1,20 @@
 /**
- * @file record.hpp
+ * @file annotate.hpp
  * @author Luis G. Leon-Vega (luis.leon@ieee.org)
- * @brief Observer to query the perf record command. It works as a wrapper
- * for other functions like perf annotate
+ * @brief Observer to query the perf annotate command. This depends on the
+ * perf record class
  *
  * @copyright Copyright (c) 2024. See License for Licensing
  */
 
-#ifndef INCLUDE_EFIMON_PERF_RECORD_HPP_
-#define INCLUDE_EFIMON_PERF_RECORD_HPP_
+#ifndef INCLUDE_EFIMON_PERF_ANNOTATE_HPP_
+#define INCLUDE_EFIMON_PERF_ANNOTATE_HPP_
 
 #include <efimon/observer-enums.hpp>
 #include <efimon/observer.hpp>
-#include <efimon/perf/record-readings.hpp>
+#include <efimon/perf/record.hpp>
 #include <efimon/readings.hpp>
+#include <efimon/readings/instruction-readings.hpp>
 #include <efimon/status.hpp>
 #include <filesystem>
 #include <string>
@@ -21,35 +22,23 @@
 
 namespace efimon {
 
-/* Opaque linking for friendship */
-class PerfAnnotateObserver;
-
 /**
- * @brief Observer class that executes and queries the perf record command
+ * @brief Observer class that executes and queries the perf annotate command
  *
- * Gets information about the process in terms of performance, like
- * instructions execute, calls to other functions, and so on. This is a
- * built-in kernel friendly profiler.
+ * Gets information about the assembly instructions executed by a process
+ * after a certain consumption threshold (usually above 0.1%). This work
+ * as some sort of head for PerfRecordObserver.
  */
-class PerfRecordObserver : public Observer {
+class PerfAnnotateObserver : public Observer {
  public:
-  PerfRecordObserver() = delete;
+  PerfAnnotateObserver() = delete;
 
   /**
-   * @brief Construct a new perf record observer
+   * @brief Construct a new perf annotate observer
    *
-   * @param pid process id to attach in
-   * @param scope only ObserverScope::PROCESS is valid
-   * @param interval interval of how often the proc is queried in milliseconds.
-   * 0 for manual query. This argument is later truncated to seconds. The value
-   * will be ceiled.
-   * @param frequency sampling frecuency in Hz of the perf profiler (how often
-   * it samples)
-   * @param no_dispose no dispose the results
+   * @param record PerfRecordObserver for executing the recording
    */
-  PerfRecordObserver(const uint pid, const ObserverScope scope,
-                     const uint64_t interval, const uint64_t frequency,
-                     const bool no_dispose = false);
+  explicit PerfAnnotateObserver(PerfRecordObserver& record);  // NOLINT
 
   /**
    * @brief Manually triggers the measurement in case that there is no interval
@@ -65,14 +54,14 @@ class PerfRecordObserver : public Observer {
    * Observer::Trigger() method must be invoked before calling this method
    *
    * @return std::vector<Readings> vector of readings from the observer.
-   * The order will be 0: binary perf file (T.B.D)
+   * The order will be 0: InstructionReadings
    */
   std::vector<Readings*> GetReadings() override;
 
   /**
    * @brief Select the device to measure
    *
-   * Selects the CPU core affinity. This is to be implemented
+   * Selects the CPU core affinity. Not implemented
    *
    * @param device device enumeration
    * @return Status of the transaction
@@ -131,8 +120,8 @@ class PerfRecordObserver : public Observer {
   /**
    * @brief Set the Interval in milliseconds
    *
-   * Sets how often the observer will be refreshed. The value is ceiled to
-   * the following integer second.
+   * This does not affect the interval. Please, interact with the
+   * PerfRecordObserver.
    *
    * @param interval time in milliseconds
    * @return Status of the setting process
@@ -142,7 +131,8 @@ class PerfRecordObserver : public Observer {
   /**
    * @brief Clear the interval
    *
-   * Avoids the instance to be automatically refreshed
+   * This does not affect the interval. Please, interact with the
+   * PerfRecordObserver
    *
    * @return Status
    */
@@ -160,53 +150,23 @@ class PerfRecordObserver : public Observer {
   /**
    * @brief Destroy the Proc MemInfo Observer object
    */
-  virtual ~PerfRecordObserver();
-
-  friend class PerfAnnotateObserver;
+  virtual ~PerfAnnotateObserver();
 
  private:
-  /** There are valid results */
+  /** PerfRecordObserver wrapped in this class */
+  PerfRecordObserver& record_;
+  /** Instruction readings: where the results are going to be encapsulated */
+  InstructionReadings readings_;
+  /** The results are valid */
   bool valid_;
-  /** Process ID */
-  uint pid_;
-  /** Sampling frequency: how often to sample during the interval */
-  uint64_t frequency_;
-  /** Command to perform the perf record */
-  std::string perf_cmd_;
-  /** Path to the perf.data file */
-  std::filesystem::path path_to_perf_data_;
-  /** Path to the temporary folder */
-  std::filesystem::path tmp_folder_path_;
-  /** No dispose results */
-  bool no_dispose_;
-  /** Readings */
-  RecordReadings readings_;
-
-  /**
-   * @brief Fills the perf command based on the provided arguments
-   */
-  void MakePerfCommand();
-
-  /**
-   * @brief Moves the perf.data file to a temporary file
-   *
-   * @param ipath path to load the perf data
-   * @param opath path to save the perf data
-   */
-  void MovePerfData(const std::filesystem::path& ipath,
-                    const std::filesystem::path& opath);
-
-  /**
-   * @brief Create a Temporary Folder object
-   */
-  void CreateTemporaryFolder();
-
-  /**
-   * @brief Releases the Temporary Folder object
-   */
-  void DisposeTemporaryFolder();
+  /** Command prefix to execute the annotation */
+  std::string command_prefix_;
+  /** Command suffix to execute the annotation */
+  std::string command_suffix_;
+  /** File where the annotation happens */
+  std::filesystem::path annotation_;
 };
 
 } /* namespace efimon */
 
-#endif /* INCLUDE_EFIMON_PERF_RECORD_HPP_ */
+#endif  // INCLUDE_EFIMON_PERF_ANNOTATE_HPP_
