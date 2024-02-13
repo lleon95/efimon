@@ -25,3 +25,13 @@ executable('sqlite-testing',
            dependencies: [libefimon_dep],
            install : true,
 )
+
+executable('perf-testing',
+           [
+             files('perf-testing.cpp')
+           ],
+           cpp_args : cpp_args,
+           include_directories : [project_inc],
+           dependencies: [libefimon_dep],
+           install : true,
+)
