@@ -52,7 +52,8 @@ void PerfRecordObserver::MakePerfCommand() {
 
 void PerfRecordObserver::MovePerfData(const std::filesystem::path& ipath,
                                       const std::filesystem::path& opath) {
-  std::filesystem::copy_file(ipath, opath);
+  std::filesystem::copy_file(ipath, opath,
+                             std::filesystem::copy_options::update_existing);
   this->valid_ = true;
   this->path_to_perf_data_ = opath;
 }
