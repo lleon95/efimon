@@ -165,6 +165,9 @@ class PerfAnnotateObserver : public Observer {
   std::string command_suffix_;
   /** File where the annotation happens */
   std::filesystem::path annotation_;
+
+  /** Parses the annotation results */
+  Status ParseResults();
 };
 
 } /* namespace efimon */
