@@ -21,7 +21,7 @@ int main(int argc, char **argv) {
   }
 
   uint pid = std::atoi(argv[1]);
-  PerfRecordObserver record{pid, ObserverScope::PROCESS, 30, 1000, true};
+  PerfRecordObserver record{pid, ObserverScope::PROCESS, 5, 1000, true};
   PerfAnnotateObserver annotate{record};
   record.Trigger();
   annotate.Trigger();
