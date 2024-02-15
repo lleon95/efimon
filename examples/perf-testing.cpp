@@ -7,7 +7,7 @@
  */
 
 #include <cstdlib>
-#include <efimon/asm-classifier/x86-classifier.hpp>
+#include <efimon/asm-classifier.hpp>
 #include <efimon/perf/annotate.hpp>
 #include <efimon/perf/record-readings.hpp>
 #include <efimon/perf/record.hpp>
@@ -37,13 +37,18 @@ int main(int argc, char **argv) {
   std::cout << "Record: Difference: " << readings_rec->difference << std::endl;
 
   std::cout << "Histogram:" << std::endl;
-  x86Classifier classifier{};
   for (const auto &pair : readings_ann->histogram) {
     std::cout << "\t" << std::get<0>(pair) << ": " << std::get<1>(pair)
               << std::endl;
-    InstructionPair instpair = classifier.Classify(std::get<0>(pair));
-    std::cout << "\t\t" << x86Classifier::TypeString(instpair.first) << " -> "
-              << x86Classifier::FamilyString(instpair.second) << std::endl;
+  }
+  std::cout << "Classification:" << std::endl;
+  for (const auto &type : readings_ann->classification) {
+    std::cout << "\t" << AsmClassifier::TypeString(type.first) << ": "
+              << std::endl;
+    for (const auto &family : type.second) {
+      std::cout << "\t\t" << AsmClassifier::FamilyString(family.first) << ": "
+                << family.second << std::endl;
+    }
   }
 
   std::cout << "Annotate: Timestamp: " << readings_ann->timestamp << std::endl;
