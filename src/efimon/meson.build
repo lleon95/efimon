@@ -17,4 +17,5 @@ lib_efimon_sources += [
   files('perf/record.cpp'),
   files('perf/annotate.cpp'),
   files('uptime.cpp'),
+  files('asm-classifier.cpp'),
 ]
