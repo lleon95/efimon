@@ -8,6 +8,8 @@
  */
 
 #include <efimon/asm-classifier.hpp>
+#include <efimon/asm-classifier/x86-classifier.hpp>
+#include <memory>
 #include <string>
 
 namespace efimon {
@@ -39,6 +41,16 @@ const std::string AsmClassifier::TypeString(
       return "Vector";
     default:
       return "Unclassified";
+  }
+}
+
+std::unique_ptr<AsmClassifier> AsmClassifier::Build(
+    const assembly::Architecture arch) {
+  switch (arch) {
+    case assembly::Architecture::X86:
+      return std::make_unique<x86Classifier>();
+    default:
+      return nullptr;
   }
 }
 

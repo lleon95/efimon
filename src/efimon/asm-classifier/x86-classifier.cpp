@@ -76,7 +76,8 @@ InstructionPair x86Classifier::Classify(
     case 'v':
       [[fallthrough]];
     case 'p':
-      type = InstructionType::VECTOR;
+      type =
+          compute_op ? InstructionType::VECTOR : InstructionType::UNCLASSIFIED;
       break;
     default:
       type =

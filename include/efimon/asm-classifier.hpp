@@ -10,11 +10,22 @@
 #ifndef INCLUDE_EFIMON_ASM_CLASSIFIER_HPP_
 #define INCLUDE_EFIMON_ASM_CLASSIFIER_HPP_
 
+#include <memory>
 #include <string>
 #include <utility>
 
 namespace efimon {
 namespace assembly {
+
+/**
+ * Enumerator for de architecture
+ */
+enum class Architecture {
+  /** Unknown */
+  NONE = 0,
+  /** x86 architecture */
+  X86
+};
 
 /**
  * Enumerator for the instruction family, classifying it according to its
@@ -81,6 +92,9 @@ class AsmClassifier {
    * Gets the string from the type enumerator (InstructionType)
    */
   static const std::string TypeString(const assembly::InstructionType type);
+
+  static std::unique_ptr<AsmClassifier> Build(
+      const assembly::Architecture arch);
 };
 
 } /* namespace efimon */

@@ -16,6 +16,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -38,6 +39,13 @@ PerfAnnotateObserver::PerfAnnotateObserver(PerfRecordObserver& record)
   this->command_prefix_ += " && perf annotate --percent-type global-period -i ";
   this->command_suffix_ = " | sort -r -k2,1n";
   this->command_suffix_ += " > " + filename;
+
+#if defined(__x86_64__) || defined(_M_X64) || defined(i386) || \
+    defined(__i386__) || defined(__i386) || defined(_M_IX86)
+  this->classifier_ = AsmClassifier::Build(assembly::Architecture::X86);
+#else
+  this->classifier_ = nullptr;
+#endif
 }
 
 Status PerfAnnotateObserver::Trigger() {
@@ -100,6 +108,21 @@ Status PerfAnnotateObserver::ParseResults() {
       this->readings_.histogram[assembly] = percent;
     } else {
       this->readings_.histogram[assembly] += percent;
+    }
+
+    /* Classify */
+    if (!this->classifier_) continue;
+    InstructionPair classification = this->classifier_->Classify(assembly);
+    if (this->readings_.classification[classification.first].find(
+            classification.second) ==
+        this->readings_.classification[classification.first].end()) {
+      this->readings_
+          .classification[classification.first][classification.second] =
+          percent;
+    } else {
+      this->readings_
+          .classification[classification.first][classification.second] +=
+          percent;
     }
   }
 

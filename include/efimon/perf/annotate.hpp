@@ -10,6 +10,7 @@
 #ifndef INCLUDE_EFIMON_PERF_ANNOTATE_HPP_
 #define INCLUDE_EFIMON_PERF_ANNOTATE_HPP_
 
+#include <efimon/asm-classifier.hpp>
 #include <efimon/observer-enums.hpp>
 #include <efimon/observer.hpp>
 #include <efimon/perf/record.hpp>
@@ -17,6 +18,7 @@
 #include <efimon/readings/instruction-readings.hpp>
 #include <efimon/status.hpp>
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -165,6 +167,8 @@ class PerfAnnotateObserver : public Observer {
   std::string command_suffix_;
   /** File where the annotation happens */
   std::filesystem::path annotation_;
+  /** Classifier to construct the proper histograms */
+  std::unique_ptr<AsmClassifier> classifier_;
 
   /** Parses the annotation results */
   Status ParseResults();
