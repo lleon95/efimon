@@ -58,7 +58,6 @@ Status PerfAnnotateObserver::Trigger() {
   std::string cmd = this->command_prefix_ +
                     std::string(this->record_.path_to_perf_data_) +
                     this->command_suffix_;
-  std::cout << "Executing Command: " << cmd << std::endl;
   int retv = std::system(cmd.c_str());
   if (retv) {
     ret = Status{Status::FILE_ERROR, "Cannot execute perf annotate command"};
