@@ -10,6 +10,7 @@
 #include <efimon/perf/annotate.hpp>
 #include <efimon/perf/record-readings.hpp>
 #include <efimon/perf/record.hpp>
+#include <efimon/readings/instruction-readings.hpp>
 #include <iostream>
 #include <string>
 
@@ -25,10 +26,23 @@ int main(int argc, char **argv) {
   PerfAnnotateObserver annotate{record};
   record.Trigger();
   annotate.Trigger();
-  auto readings = dynamic_cast<RecordReadings *>(record.GetReadings()[0]);
+  auto readings_rec = dynamic_cast<RecordReadings *>(record.GetReadings()[0]);
+  auto readings_ann =
+      dynamic_cast<InstructionReadings *>(annotate.GetReadings()[0]);
 
-  std::cout << "Results saved in: " << readings->perf_data_path << std::endl;
-  std::cout << "Timestamp: " << readings->timestamp << std::endl;
-  std::cout << "Difference: " << readings->difference << std::endl;
+  std::cout << "Record: Results saved in: " << readings_rec->perf_data_path
+            << std::endl;
+  std::cout << "Record: Timestamp: " << readings_rec->timestamp << std::endl;
+  std::cout << "Record: Difference: " << readings_rec->difference << std::endl;
+
+  std::cout << "Histogram:" << std::endl;
+  for (const auto &pair : readings_ann->histogram) {
+    std::cout << "\t" << std::get<0>(pair) << ": " << std::get<1>(pair)
+              << std::endl;
+  }
+
+  std::cout << "Annotate: Timestamp: " << readings_ann->timestamp << std::endl;
+  std::cout << "Annotate: Difference: " << readings_ann->difference
+            << std::endl;
   return 0;
 }

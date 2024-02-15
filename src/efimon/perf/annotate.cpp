@@ -68,6 +68,9 @@ Status PerfAnnotateObserver::ParseResults() {
     return Status{Status::FILE_ERROR, "Cannot open annotation file"};
   }
 
+  /* Cleat the histogram */
+  this->readings_.histogram.clear();
+
   /* Read the file line by line */
   std::string line;
   while (std::getline(ann_file, line)) {
@@ -91,7 +94,13 @@ Status PerfAnnotateObserver::ParseResults() {
     sloc >> drop; /* Get rid of 'address' */
     sloc >> assembly;
 
-    std::cout << assembly << ": " << percent << std::endl;
+    /* Add to the histogram */
+    if (this->readings_.histogram.find(assembly) ==
+        this->readings_.histogram.end()) {
+      this->readings_.histogram[assembly] = percent;
+    } else {
+      this->readings_.histogram[assembly] += percent;
+    }
   }
 
   this->valid_ = true;
