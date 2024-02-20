@@ -34,6 +34,9 @@ project_deps += libprocps_dep
 sqlite_dep = dependency('sqlite3', required: true)
 project_deps += sqlite_dep
 
+# Verify if Perf is installed
+perf_executable = find_program('perf', required: true, native: true)
+
 # -----------------------------------------------------------------------------
 # Developer mode options
 # -----------------------------------------------------------------------------
