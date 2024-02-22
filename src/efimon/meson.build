@@ -20,3 +20,9 @@ lib_efimon_sources += [
   files('asm-classifier.cpp'),
   files('asm-classifier/x86-classifier.cpp'),
 ]
+
+if get_option('enable-pcm')
+  lib_efimon_sources += [
+    files('power/intel.cpp')
+  ]
+endif

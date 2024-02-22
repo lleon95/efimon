@@ -43,6 +43,7 @@ if get_option('enable-pcm')
 
   # Fetch the dependency object
   pcm_dep = pcm_proj.dependency('PCM_SHARED')
+  project_deps += pcm_dep
 endif
 
 c_args = ['-Werror']

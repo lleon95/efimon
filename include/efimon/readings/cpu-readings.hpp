@@ -10,9 +10,8 @@
 #define INCLUDE_EFIMON_READINGS_CPU_READINGS_HPP_
 
 #include <cstdint>
-#include <vector>
-
 #include <efimon/readings.hpp>
+#include <vector>
 
 namespace efimon {
 
@@ -26,8 +25,12 @@ struct CPUReadings : public Readings {
   float overall_power;
   /** Usage per core */
   std::vector<float> core_usage;
+  /** Usage per core */
+  std::vector<float> socket_usage;
   /** Power per core */
   std::vector<float> core_power;
+  /** Power per socket */
+  std::vector<float> socket_power;
   /** Destructor to enable the inheritance */
   virtual ~CPUReadings() = default;
 };
