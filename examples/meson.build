@@ -43,7 +43,7 @@ if get_option('enable-pcm')
             ],
             cpp_args : cpp_args,
             include_directories : [project_inc],
-            dependencies: [pcm_dep],
+            dependencies: [libefimon_dep],
             install : false,
   )
 endif

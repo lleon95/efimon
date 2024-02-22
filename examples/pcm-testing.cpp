@@ -8,39 +8,54 @@
 
 #include <unistd.h>
 
+#include <efimon/power/intel.hpp>
+#include <efimon/readings/cpu-readings.hpp>
 #include <iostream>
-#include <third-party/pcm.hpp>
+
+using namespace efimon;  // NOLINT
 
 int main() {
   std::cout << "Hello from PCM" << std::endl;
-
   std::cout << "INFO: Getting Instance" << std::endl;
-  pcm::PCM* m = pcm::PCM::getInstance();
+  IntelMeterObserver observer{0, ObserverScope::SYSTEM, 0};
 
-  std::cout << "INFO: Mutex" << std::endl;
-  const pcm::PCM::ErrorCode status =
-      m->program(pcm::PCM::DEFAULT_EVENTS, nullptr, false, -1);
-  if (pcm::PCM::Success != status) {
-    std::cerr << "ERROR: Cannot launch the program. Is it root?" << std::endl;
-  }
-
-  std::vector<pcm::CoreCounterState> cstates1, cstates2;
-  std::vector<pcm::SocketCounterState> sktstate1, sktstate2;
-  pcm::SystemCounterState sstate1, sstate2;
-
-  std::cout << "INFO: Getting 1 sec of data" << std::endl;
-  m->getAllCounterStates(sstate1, sktstate1, cstates1);
-  sleep(1);
-  m->getAllCounterStates(sstate2, sktstate2, cstates2);
-  sleep(1);
-
-  std::cout << "INFO: Printing data" << std::endl;
-  for (uint i = 0; i < m->getNumSockets(); ++i) {
-    if (m->packageEnergyMetricsAvailable()) {
-      std::cout << "Socket " << i << " Energy (Joules): "
-                << pcm::getConsumedJoules(sktstate1[0], sktstate2[0])
-                << std::endl;
+  while (true) {
+    /* Trigger to get results */
+    observer.Trigger();
+    auto status = observer.GetStatus();
+    if (Status::OK != status.code) {
+      std::cerr << "ERROR: The status of the observer is not OK - "
+                << status.msg;
+      break;
     }
+    auto readings_vec = observer.GetReadings();
+    for (auto &reading_iface : readings_vec) {
+      CPUReadings *readings = dynamic_cast<CPUReadings *>(reading_iface);
+      std::cout << "-----------------------------------------------------------"
+                   "-----\n"
+                << "\tOverall Use: " << readings->overall_usage << " IPC"
+                << std::endl
+                << "\tOverall Power: " << readings->overall_power << " Joules"
+                << std::endl;
+      std::cout << "\tCore Usage: ";
+      for (auto val : readings->core_usage) {
+        std::cout << val << " ";
+      }
+      std::cout << " IPC" << std::endl << "\tSocket Usage: ";
+      for (auto val : readings->socket_usage) {
+        std::cout << val << " ";
+      }
+      std::cout << " IPC" << std::endl << "\tSocket Power: ";
+      for (auto val : readings->socket_power) {
+        std::cout << val << " ";
+      }
+      std::cout << " Joules" << std::endl;
+    }
+
+    /* Loop every second */
+    sleep(1);
   }
+
+  std::cout << "Exiting..." << std::endl;
   return 0;
 }
