@@ -7,11 +7,17 @@
  * @copyright Copyright (c) 2024. See License for Licensing
  */
 
+#include <algorithm>
 #include <cstdlib>
 #include <efimon/perf/record.hpp>
 #include <filesystem>
 #include <iostream>
+#include <mutex>  // NOLINT
 #include <string>
+#include <unordered_map>
+
+static std::mutex singleton_mutex_;
+static std::vector<uint> active_pids_;
 
 #define MAX_LEN_FILE_PATH 255
 
@@ -46,6 +52,16 @@ PerfRecordObserver::PerfRecordObserver(const uint pid,
   if (!this->CheckAlive()) {
     throw Status{Status::NOT_FOUND, "Cannot check that PID is alive"};
   }
+
+  singleton_mutex_.lock();
+  auto it = std::find(active_pids_.begin(), active_pids_.end(), pid);
+  if (active_pids_.end() != it) {
+    singleton_mutex_.unlock();
+    throw Status{Status::RESOURCE_BUSY,
+                 "The PID is already being tracked by perf record"};
+  }
+  active_pids_.push_back(pid);
+  singleton_mutex_.unlock();
 
   this->CreateTemporaryFolder();
   this->MakePerfCommand();
@@ -134,10 +150,33 @@ Status PerfRecordObserver::SetScope(const ObserverScope scope) {
 }
 
 Status PerfRecordObserver::SetPID(const uint pid) {
-  if (this->pid_ != 0) {
+  uint tmp_pid = this->pid_;
+  this->pid_ = pid;
+
+  /* Check if it is alive */
+  if (!this->CheckAlive()) {
+    /* Revert */
+    this->pid_ = tmp_pid;
+    return Status{Status::NOT_FOUND, "Cannot check that PID is alive"};
+  }
+
+  /* Singleton logic */
+  singleton_mutex_.lock();
+
+  if (tmp_pid != 0) {
+    auto oit = std::find(active_pids_.begin(), active_pids_.end(), tmp_pid);
+    active_pids_.erase(oit);
     this->DisposeTemporaryFolder();
   }
-  this->pid_ = pid;
+
+  auto iit = std::find(active_pids_.begin(), active_pids_.end(), pid);
+  if (active_pids_.end() != iit) {
+    singleton_mutex_.unlock();
+    return Status{Status::RESOURCE_BUSY,
+                  "The PID is already being tracked by perf record"};
+  }
+  active_pids_.push_back(pid);
+  singleton_mutex_.unlock();
 
   this->CreateTemporaryFolder();
   this->MakePerfCommand();
