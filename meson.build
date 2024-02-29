@@ -69,5 +69,5 @@ if get_option('build-examples')
 endif
 
 if get_option('build-docs') or get_option('build-docs-only')
-  subdir('docs')
+  subdir('docs-src')
 endif
