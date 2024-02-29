@@ -43,6 +43,8 @@ class Status : public std::exception {
     LOGGER_CANNOT_OPEN,   /** Logger cannot be open */
     LOGGER_CANNOT_INSERT, /** Logger incapable to insert new row */
     NOT_READY,            /** Not ready */
+    /** The resource cannot be accessed with current user privileges */
+    ACCESS_DENIED,
   };
 
   /**

@@ -12,7 +12,7 @@ executable('process-tracking',
            cpp_args : cpp_args,
            include_directories : [project_inc],
            dependencies: [libefimon_dep],
-           install : true,
+           install : false,
 )
 
 
@@ -23,7 +23,7 @@ executable('sqlite-testing',
            cpp_args : cpp_args,
            include_directories : [project_inc],
            dependencies: [libefimon_dep],
-           install : true,
+           install : false,
 )
 
 executable('perf-testing',
@@ -33,5 +33,17 @@ executable('perf-testing',
            cpp_args : cpp_args,
            include_directories : [project_inc],
            dependencies: [libefimon_dep],
-           install : true,
+           install : false,
 )
+
+if get_option('enable-pcm')
+  executable('pcm-testing',
+            [
+              files('pcm-testing.cpp')
+            ],
+            cpp_args : cpp_args,
+            include_directories : [project_inc],
+            dependencies: [libefimon_dep],
+            install : false,
+  )
+endif

@@ -9,8 +9,6 @@ project('efimon', ['c','cpp'], version : '0.1.0',
         default_options : ['warning_level=3',
                            'cpp_std=c++17',
                            'c_std=c17',
-                           'cpp_args=-Werror',
-                           'c_args=-Werror'
                            ],
         license: 'LGPL-2.1-only',
         meson_version: '>= 1.0.0' 
@@ -19,11 +17,10 @@ project('efimon', ['c','cpp'], version : '0.1.0',
 # -----------------------------------------------------------------------------
 # Global variables and default definitions
 # -----------------------------------------------------------------------------
+cmake = import('cmake')
 
 project_inc = [include_directories('include')]
 project_deps = []
-c_args = []
-cpp_args = []
 
 # Find proc library
 cpp = meson.get_compiler('cpp')
@@ -36,6 +33,21 @@ project_deps += sqlite_dep
 
 # Verify if Perf is installed
 perf_executable = find_program('perf', required: true, native: true)
+
+# Add Intel PCM
+if get_option('enable-pcm')
+  # Configure the CMake project
+  opt_var = cmake.subproject_options()
+  opt_var.set_override_option('warning_level', '0')
+  pcm_proj = cmake.subproject('pcm', options: opt_var)
+
+  # Fetch the dependency object
+  pcm_dep = pcm_proj.dependency('PCM_SHARED')
+  project_deps += pcm_dep
+endif
+
+c_args = ['-Werror']
+cpp_args = ['-Werror']
 
 # -----------------------------------------------------------------------------
 # Developer mode options
