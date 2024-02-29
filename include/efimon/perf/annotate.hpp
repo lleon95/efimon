@@ -28,8 +28,8 @@ namespace efimon {
  * @brief Observer class that executes and queries the perf annotate command
  *
  * Gets information about the assembly instructions executed by a process
- * after a certain consumption threshold (usually above 0.1%). This work
- * as some sort of head for PerfRecordObserver.
+ * after a certain consumption threshold (usually above 0.1%). This works
+ * as a sort of head for PerfRecordObserver.
  */
 class PerfAnnotateObserver : public Observer {
  public:

@@ -18,7 +18,7 @@ namespace efimon {
 namespace assembly {
 
 /**
- * Enumerator for de architecture
+ * Enumerator for the architecture
  */
 enum class Architecture {
   /** Unknown */
@@ -93,6 +93,12 @@ class AsmClassifier {
    */
   static const std::string TypeString(const assembly::InstructionType type);
 
+  /**
+   * @brief Constructs a new classifier.
+   *
+   * @param arch architecture selector from assembly::Architecture enum
+   * @return unique_ptr to the classifier implementation
+   */
   static std::unique_ptr<AsmClassifier> Build(
       const assembly::Architecture arch);
 };

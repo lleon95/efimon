@@ -38,11 +38,11 @@ class PerfRecordObserver : public Observer {
   /**
    * @brief Construct a new perf record observer
    *
-   * @param pid process id to attach in
+   * @param pid process id to attach to
    * @param scope only ObserverScope::PROCESS is valid
-   * @param interval interval of how often the proc is queried in milliseconds.
-   * 0 for manual query. This argument is later truncated to seconds. The value
-   * will be ceiled.
+   * @param interval interval of how often the process is queried in
+   * milliseconds. 0 for manual query. This argument is later truncated to
+   * seconds. The value will be ceiled.
    * @param frequency sampling frecuency in Hz of the perf profiler (how often
    * it samples)
    * @param no_dispose no dispose the results
