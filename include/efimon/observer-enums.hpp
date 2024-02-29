@@ -40,6 +40,8 @@ enum class ObserverType {
   /** Interval meter: it specifies a query instance of non-metering sensor,
       like the process analyser */
   INTERVAL = 1 << 7,
+  /** CPU instructions analysis */
+  CPU_INSTRUCTIONS = 1 << 8,
   /** All: singleton observer */
   ALL = 1 << 31
 };

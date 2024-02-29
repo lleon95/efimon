@@ -41,7 +41,8 @@ class Status : public std::exception {
     RESOURCE_BUSY,        /** Busy */
     NOT_FOUND,            /** Reosurce not found */
     LOGGER_CANNOT_OPEN,   /** Logger cannot be open */
-    LOGGER_CANNOT_INSERT, /*** Logger incapable to insert new row */
+    LOGGER_CANNOT_INSERT, /** Logger incapable to insert new row */
+    NOT_READY,            /** Not ready */
   };
 
   /**
