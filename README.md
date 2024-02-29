@@ -62,4 +62,10 @@ T.B.D
 
 This project is given to you under the LGPL v2.1 Licence. Dynamic linkage from commercial applications to EfiMon is allowed. Derived work and modifications must be released under the same license as EfiMon (LGPL v2.1).
 
-T.B.D
+### Contributors
+
+* Luis G. Leon Vega <luis.leon@ieee.org>
+
+### Official Repository
+
+* Github: https://github.com/lleon95/efimon
