@@ -18,11 +18,15 @@ namespace efimon {
 extern uint64_t GetUptime();
 
 PerfRecordObserver::PerfRecordObserver(const uint pid,
-                                       const ObserverScope /* scope */,
+                                       const ObserverScope scope,
                                        const uint64_t interval,
                                        const uint64_t frequency,
                                        const bool no_dispose)
     : Observer{}, valid_{false}, frequency_{frequency} {
+  if (ObserverScope::PROCESS != scope) {
+    throw Status{Status::INVALID_PARAMETER, "System-scope is not supported"};
+  }
+
   this->pid_ = pid;
   this->interval_ = interval;
   this->no_dispose_ = no_dispose;
