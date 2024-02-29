@@ -205,6 +205,11 @@ class PerfRecordObserver : public Observer {
    * @brief Releases the Temporary Folder object
    */
   void DisposeTemporaryFolder();
+
+  /**
+   * @brief Checks if the process is alive
+   */
+  bool CheckAlive();
 };
 
 } /* namespace efimon */

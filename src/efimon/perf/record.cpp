@@ -13,6 +13,8 @@
 #include <iostream>
 #include <string>
 
+#define MAX_LEN_FILE_PATH 255
+
 namespace efimon {
 
 extern uint64_t GetUptime();
@@ -34,12 +36,16 @@ PerfRecordObserver::PerfRecordObserver(const uint pid,
   this->pid_ = pid;
   this->interval_ = interval;
   this->no_dispose_ = no_dispose;
-  if (pid == 0) return;
   if (interval == 0) interval_ = 1000;
   if (frequency == 0) frequency_ = 1000;
 
   this->caps_.emplace_back();
   this->caps_[0].type = type;
+
+  if (pid == 0) return;
+  if (!this->CheckAlive()) {
+    throw Status{Status::NOT_FOUND, "Cannot check that PID is alive"};
+  }
 
   this->CreateTemporaryFolder();
   this->MakePerfCommand();
@@ -51,8 +57,28 @@ void PerfRecordObserver::CreateTemporaryFolder() {
   std::filesystem::create_directory(tmp_folder_path_);
 }
 
+bool PerfRecordObserver::CheckAlive() {
+  bool ret = false;
+  char path[MAX_LEN_FILE_PATH] = {0};
+  FILE* procfp = NULL;
+
+  /* Prepare to open the file */
+  snprintf(path, MAX_LEN_FILE_PATH, "/proc/%i/io", this->pid_);
+
+  procfp = fopen(path, "r");
+
+  if (procfp == NULL) {
+    this->status_ = Status{Status::NOT_FOUND, "The process is not available"};
+  } else {
+    this->status_ = Status{Status::OK, "OK"};
+    ret = true;
+    fclose(procfp);
+  }
+  return ret;
+}
+
 void PerfRecordObserver::MakePerfCommand() {
-  this->perf_cmd_ += "cd " + std::string(this->tmp_folder_path_);
+  this->perf_cmd_ = "cd " + std::string(this->tmp_folder_path_);
   this->perf_cmd_ += " && perf record -q -F";
   this->perf_cmd_ += std::to_string(this->frequency_);
   this->perf_cmd_ += " -g -v -p ";
@@ -74,6 +100,14 @@ void PerfRecordObserver::DisposeTemporaryFolder() {
 }
 
 Status PerfRecordObserver::Trigger() {
+  if (this->pid_ == 0) {
+    return Status{Status::NOT_READY, "Invalid PID. Assign one"};
+  }
+
+  if (!this->CheckAlive()) {
+    return this->status_;
+  }
+
   auto target_path = this->tmp_folder_path_ / "perf.data.ulock";
   std::system(this->perf_cmd_.c_str());
   this->MovePerfData(this->tmp_folder_path_ / "perf.data", target_path);
@@ -100,7 +134,14 @@ Status PerfRecordObserver::SetScope(const ObserverScope scope) {
 }
 
 Status PerfRecordObserver::SetPID(const uint pid) {
+  if (this->pid_ != 0) {
+    this->DisposeTemporaryFolder();
+  }
   this->pid_ = pid;
+
+  this->CreateTemporaryFolder();
+  this->MakePerfCommand();
+
   return Status{};
 }
 
@@ -115,7 +156,7 @@ const std::vector<ObserverCapabilities>& PerfRecordObserver::GetCapabilities()
   return this->caps_;
 }
 
-Status PerfRecordObserver::GetStatus() { return Status{}; }
+Status PerfRecordObserver::GetStatus() { return this->status_; }
 
 Status PerfRecordObserver::SetInterval(const uint64_t interval) {
   this->interval_ = interval;

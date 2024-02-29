@@ -23,10 +23,20 @@ int main(int argc, char **argv) {
   }
 
   uint pid = std::atoi(argv[1]);
+  std::cout << "PID: " << pid << std::endl;
+
   PerfRecordObserver record{pid, ObserverScope::PROCESS, 5, 1000, true};
   PerfAnnotateObserver annotate{record};
-  record.Trigger();
+
+  auto status = record.Trigger();
+  if (status.code != Status::OK) {
+    std::cerr << status.msg << std::endl;
+    return -1;
+  }
   annotate.Trigger();
+  status = record.GetStatus();
+  std::cout << "Record Status: " << status.msg << std::endl;
+
   auto readings_rec = dynamic_cast<RecordReadings *>(record.GetReadings()[0]);
   auto readings_ann =
       dynamic_cast<InstructionReadings *>(annotate.GetReadings()[0]);
