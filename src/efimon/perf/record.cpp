@@ -157,6 +157,7 @@ Status PerfRecordObserver::SetPID(const uint pid) {
   if (!this->CheckAlive()) {
     /* Revert */
     this->pid_ = tmp_pid;
+    this->valid_ = false;
     return Status{Status::NOT_FOUND, "Cannot check that PID is alive"};
   }
 
@@ -172,6 +173,7 @@ Status PerfRecordObserver::SetPID(const uint pid) {
   auto iit = std::find(active_pids_.begin(), active_pids_.end(), pid);
   if (active_pids_.end() != iit) {
     singleton_mutex_.unlock();
+    this->valid_ = false;
     return Status{Status::RESOURCE_BUSY,
                   "The PID is already being tracked by perf record"};
   }
@@ -212,6 +214,7 @@ Status PerfRecordObserver::Reset() {
   this->readings_.type = static_cast<uint>(ObserverType::NONE);
   this->readings_.timestamp = 0;
   this->readings_.difference = 0;
+  this->valid_ = false;
   return Status{};
 }
 

@@ -172,6 +172,9 @@ class PerfAnnotateObserver : public Observer {
 
   /** Parses the annotation results */
   Status ParseResults();
+
+  /** Reconstructs the path if it changes in the record instance */
+  void ReconstructPath();
 };
 
 } /* namespace efimon */

@@ -29,7 +29,6 @@ namespace efimon {
 
 PerfAnnotateObserver::PerfAnnotateObserver(PerfRecordObserver& record)
     : Observer{}, record_{record} {
-  const std::string filename = "annotation.txt";
   this->valid_ = false;
 
   uint64_t type = static_cast<uint64_t>(ObserverType::CPU) |
@@ -37,12 +36,7 @@ PerfAnnotateObserver::PerfAnnotateObserver(PerfRecordObserver& record)
                   static_cast<uint64_t>(ObserverType::CPU_INSTRUCTIONS);
 
   /* Defines the commands and paths required */
-  std::filesystem::path tmp_folder = this->record_.tmp_folder_path_;
-  this->annotation_ = tmp_folder / filename;
-  this->command_prefix_ = std::string("cd ") + std::string(tmp_folder);
-  this->command_prefix_ += " && perf annotate --percent-type global-period -i ";
-  this->command_suffix_ = " | sort -r -k2,1n";
-  this->command_suffix_ += " > " + filename;
+  this->ReconstructPath();
 
   this->caps_.emplace_back();
   this->caps_[0].type = type;
@@ -55,11 +49,23 @@ PerfAnnotateObserver::PerfAnnotateObserver(PerfRecordObserver& record)
 #endif
 }
 
+void PerfAnnotateObserver::ReconstructPath() {
+  const std::string filename = "annotation.txt";
+  std::filesystem::path tmp_folder = this->record_.tmp_folder_path_;
+  this->annotation_ = tmp_folder / filename;
+  this->command_prefix_ = std::string("cd ") + std::string(tmp_folder);
+  this->command_prefix_ += " && perf annotate --percent-type global-period -i ";
+  this->command_suffix_ = " | sort -r -k2,1n";
+  this->command_suffix_ += " > " + filename;
+}
+
 Status PerfAnnotateObserver::Trigger() {
   Status ret{};
 
   if (!this->record_.valid_)
     return Status{Status::NOT_READY, "Not ready to query"};
+
+  this->ReconstructPath();
 
   /* Executing the annotate command */
   std::string cmd = this->command_prefix_ +
