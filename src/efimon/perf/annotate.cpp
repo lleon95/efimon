@@ -32,6 +32,10 @@ PerfAnnotateObserver::PerfAnnotateObserver(PerfRecordObserver& record)
   const std::string filename = "annotation.txt";
   this->valid_ = false;
 
+  uint64_t type = static_cast<uint64_t>(ObserverType::CPU) |
+                  static_cast<uint64_t>(ObserverType::INTERVAL) |
+                  static_cast<uint64_t>(ObserverType::CPU_INSTRUCTIONS);
+
   /* Defines the commands and paths required */
   std::filesystem::path tmp_folder = this->record_.tmp_folder_path_;
   this->annotation_ = tmp_folder / filename;
@@ -39,6 +43,9 @@ PerfAnnotateObserver::PerfAnnotateObserver(PerfRecordObserver& record)
   this->command_prefix_ += " && perf annotate --percent-type global-period -i ";
   this->command_suffix_ = " | sort -r -k2,1n";
   this->command_suffix_ += " > " + filename;
+
+  this->caps_.emplace_back();
+  this->caps_[0].type = type;
 
 #if defined(__x86_64__) || defined(_M_X64) || defined(i386) || \
     defined(__i386__) || defined(__i386) || defined(_M_IX86)
@@ -161,7 +168,7 @@ uint PerfAnnotateObserver::GetPID() const noexcept {
 
 const std::vector<ObserverCapabilities>& PerfAnnotateObserver::GetCapabilities()
     const noexcept {
-  return this->record_.GetCapabilities();
+  return this->caps_;
 }
 
 Status PerfAnnotateObserver::GetStatus() { return Status{}; }

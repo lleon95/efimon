@@ -27,12 +27,19 @@ PerfRecordObserver::PerfRecordObserver(const uint pid,
     throw Status{Status::INVALID_PARAMETER, "System-scope is not supported"};
   }
 
+  uint64_t type = static_cast<uint64_t>(ObserverType::CPU) |
+                  static_cast<uint64_t>(ObserverType::INTERVAL) |
+                  static_cast<uint64_t>(ObserverType::CPU_INSTRUCTIONS);
+
   this->pid_ = pid;
   this->interval_ = interval;
   this->no_dispose_ = no_dispose;
   if (pid == 0) return;
   if (interval == 0) interval_ = 1000;
   if (frequency == 0) frequency_ = 1000;
+
+  this->caps_.emplace_back();
+  this->caps_[0].type = type;
 
   this->CreateTemporaryFolder();
   this->MakePerfCommand();
