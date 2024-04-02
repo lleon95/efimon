@@ -25,7 +25,7 @@ struct CPUReadings : public Readings {
   float overall_power;
   /** Usage per core */
   std::vector<float> core_usage;
-  /** Usage per core */
+  /** Usage per socket */
   std::vector<float> socket_usage;
   /** Power per core */
   std::vector<float> core_power;

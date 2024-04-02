@@ -20,6 +20,7 @@ lib_efimon_sources += [
   files('asm-classifier.cpp'),
   files('asm-classifier/x86-classifier.cpp'),
   files('proc/cpuinfo.cpp'),
+  files('power/rapl.cpp'),
 ]
 
 if get_option('enable-pcm')
