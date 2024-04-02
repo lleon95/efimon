@@ -19,6 +19,7 @@ lib_efimon_sources += [
   files('uptime.cpp'),
   files('asm-classifier.cpp'),
   files('asm-classifier/x86-classifier.cpp'),
+  files('proc/cpuinfo.cpp'),
 ]
 
 if get_option('enable-pcm')
