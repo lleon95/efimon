@@ -61,6 +61,18 @@ if ipmi_oem_executable.found()
   )
 endif
 
+if ipmi_oem_executable.found() and perf_executable.found()
+  executable('efimon-pid-power-analyser',
+            [
+              files('efimon-pid-power-analyser.cpp')
+            ],
+            cpp_args : cpp_args,
+            include_directories : [project_inc],
+            dependencies: [libefimon_dep],
+            install : false,
+  )
+endif
+
 if get_option('enable-pcm')
   executable('pcm-testing',
             [
