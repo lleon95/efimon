@@ -49,6 +49,18 @@ executable('rapl-testing',
            install : false,
 )
 
+if ipmi_oem_executable.found()
+  executable('ipmi-testing',
+            [
+              files('ipmi-testing.cpp')
+            ],
+            cpp_args : cpp_args,
+            include_directories : [project_inc],
+            dependencies: [libefimon_dep],
+            install : false,
+  )
+endif
+
 if get_option('enable-pcm')
   executable('pcm-testing',
             [
