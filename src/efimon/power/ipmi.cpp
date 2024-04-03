@@ -32,12 +32,13 @@ static constexpr char kIPMIPwrCmd[] =
 IPMIMeterObserver::IPMIMeterObserver(const uint /* pid */,
                                      const ObserverScope scope,
                                      const uint64_t interval)
-    : Observer{}, psu_id_{kMaxPSU}, num_psus_{0}, max_power_{} {
+    : Observer{}, valid_{false}, psu_id_{kMaxPSU}, num_psus_{0}, max_power_{} {
   uint64_t type = static_cast<uint64_t>(ObserverType::PSU) |
                   static_cast<uint64_t>(ObserverType::POWER) |
                   static_cast<uint64_t>(ObserverType::INTERVAL);
 
   this->interval_ = interval;
+  this->pid_ = getpid();
 
   if (ObserverScope::SYSTEM != scope) {
     throw Status{Status::INVALID_PARAMETER, "Process-scope is not supported"};
@@ -50,9 +51,12 @@ IPMIMeterObserver::IPMIMeterObserver(const uint /* pid */,
   if (Status::OK != st.code) {
     throw Status{Status::ACCESS_DENIED, "Cannot get info from IPMI"};
   }
+
+  this->GetInfo();
   this->Reset();
   this->Trigger();
-  this->pid_ = getpid();
+
+  this->valid_ = false;
 }
 
 Status IPMIMeterObserver::GetInfo() {
@@ -103,6 +107,7 @@ Status IPMIMeterObserver::GetInfo() {
 }
 
 Status IPMIMeterObserver::Trigger() {
+  Status st{};
   /* Set readings common metadata */
   auto time = GetUptime();
   this->readings_.type = static_cast<uint64_t>(ObserverType::PSU) |
@@ -113,18 +118,20 @@ Status IPMIMeterObserver::Trigger() {
 
   /* Check if the parse is for a single PSU */
   if (this->psu_id_ < this->num_psus_) {
-    this->GetPower(this->psu_id_);
+    st = this->GetPower(this->psu_id_);
     this->ParseResults(this->psu_id_);
-    return Status{};
+    this->valid_ = true;
+    return st;
   }
 
   /* Get for all PSUs */
   for (uint i = 0; i < this->num_psus_; ++i) {
-    this->GetPower(i);
+    st = this->GetPower(i);
     this->ParseResults(i);
   }
 
-  return Status{};
+  this->valid_ = true;
+  return st;
 }
 
 Status IPMIMeterObserver::GetPower(const uint psu_id) {
@@ -134,7 +141,7 @@ Status IPMIMeterObserver::GetPower(const uint psu_id) {
       (std::string("efimon-ipmi-power-") + std::to_string(this->pid_) +
        std::string("-p") + std::to_string(psu_id));
   std::string command = std::string(kIPMIPwrCmd) + " " +
-                        std::to_string(psu_id) + " > " +
+                        std::to_string(psu_id + 1) + " > " +
                         std::string(tmp_filename_path);
 
   /* Execute the command */
@@ -179,8 +186,9 @@ Status IPMIMeterObserver::GetPower(const uint psu_id) {
 }
 
 void IPMIMeterObserver::ParseResults(const uint psu_id) {
+  if (!this->valid_) return;
   float energy =
-      this->readings_.psu_power.at(psu_id) * this->readings_.difference;
+      this->readings_.psu_power.at(psu_id) * this->readings_.difference * 1e-3;
   this->readings_.overall_energy += energy;
   this->readings_.psu_energy.at(psu_id) += energy;
 }
