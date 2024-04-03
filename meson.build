@@ -55,6 +55,9 @@ else
   warning('Linux Perf not found. Disabling code related to Linux Perf')
 endif
 
+# Verify if IPMI OEM is installed
+ipmi_oem_executable = find_program('ipmi-oem', required: false, native: true)
+
 # Add Intel PCM
 enable_pcm = false
 if get_option('enable-pcm')
