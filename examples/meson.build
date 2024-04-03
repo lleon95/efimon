@@ -36,6 +36,16 @@ executable('perf-testing',
            install : false,
 )
 
+executable('rapl-testing',
+           [
+             files('rapl-testing.cpp')
+           ],
+           cpp_args : cpp_args,
+           include_directories : [project_inc],
+           dependencies: [libefimon_dep],
+           install : false,
+)
+
 if get_option('enable-pcm')
   executable('pcm-testing',
             [
