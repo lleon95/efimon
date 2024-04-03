@@ -33,3 +33,9 @@ if sqlite_dep.found()
     files('logger/sqlite.cpp'),
   ]
 endif
+
+if ipmi_oem_executable.found()
+  lib_efimon_sources += [
+    files('power/ipmi.cpp'),
+  ]
+endif

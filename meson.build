@@ -36,6 +36,9 @@ endif
 # Verify if Perf is installed
 perf_executable = find_program('perf', required: false, native: true)
 
+# Verify if IPMI OEM is installed
+ipmi_oem_executable = find_program('ipmi-oem', required: false, native: true)
+
 # Add Intel PCM
 if get_option('enable-pcm')
   # Configure the CMake project
