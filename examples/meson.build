@@ -27,15 +27,17 @@ if sqlite_dep.found()
   )
 endif
 
-executable('perf-testing',
-           [
-             files('perf-testing.cpp')
-           ],
-           cpp_args : cpp_args,
-           include_directories : [project_inc],
-           dependencies: [libefimon_dep],
-           install : false,
-)
+if perf_executable.found()
+  executable('perf-testing',
+            [
+              files('perf-testing.cpp')
+            ],
+            cpp_args : cpp_args,
+            include_directories : [project_inc],
+            dependencies: [libefimon_dep],
+            install : false,
+  )
+endif
 
 executable('rapl-testing',
            [

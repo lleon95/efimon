@@ -34,7 +34,7 @@ if sqlite_dep.found()
 endif
 
 # Verify if Perf is installed
-perf_executable = find_program('perf', required: true, native: true)
+perf_executable = find_program('perf', required: false, native: true)
 
 # Add Intel PCM
 if get_option('enable-pcm')
