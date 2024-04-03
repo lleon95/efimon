@@ -62,7 +62,8 @@ Status RAPLMeterObserver::GetSocketConsumption(const uint socket_id) {
     before_socket_meters_.at(socket_id) = std::stof(payload_uj) * 1e-06;
     after_socket_meters_.at(socket_id) = std::stof(payload_uj) * 1e-06;
   } else {
-    std::swap(this->before_socket_meters_, this->after_socket_meters_);
+    std::swap(this->before_socket_meters_.at(socket_id),
+              this->after_socket_meters_.at(socket_id));
     after_socket_meters_.at(socket_id) = std::stof(payload_uj) * 1e-06;
   }
 
