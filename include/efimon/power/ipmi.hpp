@@ -149,6 +149,8 @@ class IPMIMeterObserver : public Observer {
   virtual ~IPMIMeterObserver();
 
  private:
+  /** If true, the instance has valid measurements */
+  bool valid_;
   /** selected or monitored PSU id */
   uint psu_id_;
   /** number of PSUs */
