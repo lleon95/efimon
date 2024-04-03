@@ -15,16 +15,17 @@ executable('process-tracking',
            install : false,
 )
 
-
-executable('sqlite-testing',
-           [
-             files('sqlite-testing.cpp')
-           ],
-           cpp_args : cpp_args,
-           include_directories : [project_inc],
-           dependencies: [libefimon_dep],
-           install : false,
-)
+if sqlite_dep.found()
+  executable('sqlite-testing',
+            [
+              files('sqlite-testing.cpp')
+            ],
+            cpp_args : cpp_args,
+            include_directories : [project_inc],
+            dependencies: [libefimon_dep],
+            install : false,
+  )
+endif
 
 executable('perf-testing',
            [

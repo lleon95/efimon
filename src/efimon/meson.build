@@ -13,7 +13,6 @@ lib_efimon_sources += [
   files('proc/net.cpp'),
   files('proc/stat.cpp'),
   files('proc/thread-tree.cpp'),
-  files('logger/sqlite.cpp'),
   files('perf/record.cpp'),
   files('perf/annotate.cpp'),
   files('uptime.cpp'),
@@ -26,5 +25,11 @@ lib_efimon_sources += [
 if get_option('enable-pcm')
   lib_efimon_sources += [
     files('power/intel.cpp')
+  ]
+endif
+
+if sqlite_dep.found()
+  lib_efimon_sources += [
+    files('logger/sqlite.cpp'),
   ]
 endif

@@ -28,8 +28,10 @@ libprocps_dep = cpp.find_library('libprocps', required: true)
 project_deps += libprocps_dep
 
 # Find SQLite3
-sqlite_dep = dependency('sqlite3', required: true)
-project_deps += sqlite_dep
+sqlite_dep = dependency('sqlite3', required: false)
+if sqlite_dep.found()
+  project_deps += sqlite_dep
+endif
 
 # Verify if Perf is installed
 perf_executable = find_program('perf', required: true, native: true)
