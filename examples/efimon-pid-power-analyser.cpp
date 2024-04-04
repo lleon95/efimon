@@ -18,6 +18,7 @@
  * Moreover, it requires sudo permissions. Currently, the support
  * is limited to Dell Motherboards with AMD EPYC Zen2 Processors.
  *
+ * This tool is not capable of exploring other subprocesses
  */
 
 #include <unistd.h>
@@ -28,6 +29,7 @@
 #include <efimon/perf/record.hpp>
 #include <efimon/power/ipmi.hpp>
 #include <efimon/power/rapl.hpp>
+#include <efimon/proc/stat.hpp>
 #include <iostream>
 #include <string>
 
@@ -120,19 +122,27 @@ int main(int argc, char **argv) {
                                  kFrequency, true};
   PerfAnnotateObserver perf_annotate{perf_record};
 #endif
+  ProcStatObserver proc_stat{pid, efimon::ObserverScope::PROCESS, 1};
+  ProcStatObserver sys_stat{0, efimon::ObserverScope::SYSTEM, 1};
+  auto proc_stat_iface = proc_stat.GetReadings()[0];
+  auto sys_stat_iface = proc_stat.GetReadings()[0];
+  CPUReadings *proc_cpu_usage = dynamic_cast<CPUReadings *>(proc_stat_iface);
+  CPUReadings *sys_cpu_usage = dynamic_cast<CPUReadings *>(sys_stat_iface);
+  EFM_CHECK(proc_stat.Trigger());
+  EFM_CHECK(sys_stat.Trigger());
 
   // ------------ Making table header ------------
   EFM_INFO("Readings:");
-  EFM_RES << "Tstamp"
+  EFM_RES << "Timestamp"
           << ",";
 #ifdef ENABLE_IPMI
   for (uint i = 0; i < psu_num; ++i) {
-    EFM_RES << "PSU" << i << ",";
+    EFM_RES << "PSUPower" << i << ",";
   }
 #endif
 #ifdef ENABLE_RAPL
   for (uint i = 0; i < socket_num; ++i) {
-    EFM_RES << "Sock" << i << ",";
+    EFM_RES << "SocketPower" << i << ",";
   }
 #endif
 #ifdef ENABLE_PERF
@@ -144,16 +154,22 @@ int main(int argc, char **argv) {
          ++ftype) {
       auto type = static_cast<assembly::InstructionType>(itype);
       auto family = static_cast<assembly::InstructionFamily>(ftype);
-      std::string stype = AsmClassifier::TypeString(type).substr(0, 1);
-      std::string sfamily = AsmClassifier::FamilyString(family).substr(0, 1);
-      EFM_RES << "P" << stype << sfamily << ",";
+      std::string stype = AsmClassifier::TypeString(type);
+      std::string sfamily = AsmClassifier::FamilyString(family);
+      EFM_RES << "Probability" << stype << sfamily << ",";
     }
   }
 #endif
-  EFM_RES << "Diff" << std::endl;
+  EFM_RES << "SystemCpuUsage"
+          << ",";
+  EFM_RES << "ProcessCpuUsage"
+          << ",";
+  EFM_RES << "TimeDifference" << std::endl;
   // ------------ Perform reads ------------
   bool first = true;
   for (uint t = 0; t < timelimit; ++t) {
+    EFM_CHECK(proc_stat.Trigger());
+    EFM_CHECK(sys_stat.Trigger());
 #ifdef ENABLE_PERF
     EFM_CHECK(perf_record.Trigger());
     EFM_CHECK(perf_annotate.Trigger());
@@ -176,8 +192,8 @@ int main(int argc, char **argv) {
     auto timestamp = readings_rec->timestamp;
     auto difference = readings_rec->difference;
 #else
-    auto timestamp = rapl_readings->timestamp;
-    auto difference = rapl_readings->difference;
+    auto timestamp = sys_cpu_usage->timestamp;
+    auto difference = sys_cpu_usage->difference;
 #endif
     // Discard first
     if (first) {
@@ -219,6 +235,8 @@ int main(int argc, char **argv) {
     // PSU columns
 #ifdef ENABLE_IPMI
 #endif
+    EFM_RES << sys_cpu_usage->overall_usage << ",";
+    EFM_RES << proc_cpu_usage->overall_usage << ",";
     EFM_RES << difference << std::endl;
   }
 
