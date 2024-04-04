@@ -17,6 +17,8 @@ project('efimon', ['c','cpp'], version : '0.1.0',
 # -----------------------------------------------------------------------------
 # Global variables and default definitions
 # -----------------------------------------------------------------------------
+c_args = ['-Werror']
+cpp_args = ['-Werror']
 cmake = import('cmake')
 fs = import('fs')
 
@@ -60,13 +62,11 @@ enable_ipmi = false
 ipmi_oem_executable = find_program('ipmi-oem', required: false, native: true)
 if ipmi_oem_executable.found()
   enable_ipmi = true
+  cpp_args += ['-DENABLE_IPMI']
   message('IPMI found')
 else
   message('IPMI not found. Disabling code related to IPMI')
 endif
-
-# Verify if IPMI OEM is installed
-ipmi_oem_executable = find_program('ipmi-oem', required: false, native: true)
 
 # Add Intel PCM
 enable_pcm = false
