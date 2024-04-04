@@ -31,12 +31,10 @@
 #include <iostream>
 #include <string>
 
-#define ENABLE_IPMI
-#define ENABLE_PERF
-#define ENABLE_RAPL
-
 #define EFM_INFO(msg) \
   { std::cerr << "[INFO]: " << msg << std::endl; }
+#define EFM_WARN(msg) \
+  { std::cerr << "[WARNING]: " << msg << std::endl; }
 #define EFM_ERROR(msg)                            \
   {                                               \
     std::cerr << "[ERROR]: " << msg << std::endl; \
@@ -71,6 +69,23 @@ int main(int argc, char **argv) {
     msg += " -s,--samples SAMPLES";
     EFM_ERROR(msg);
   }
+
+  // Check tools
+#ifdef ENABLE_IPMI
+  EFM_INFO("IPMI found. Enabling");
+#else
+  EFM_WARN("IPMI not found.");
+#endif
+#ifdef ENABLE_PERF
+  EFM_INFO("PERF found. Enabling");
+#else
+  EFM_WARN("PERF not found.");
+#endif
+#ifdef ENABLE_RAPL
+  EFM_INFO("RAPL found. Enabling");
+#else
+  EFM_WARN("RAPL not found.");
+#endif
 
   // Extracting the PID
   uint pid = std::stoi(argparser.Exists("-p") ? argparser.GetOption("-p")
