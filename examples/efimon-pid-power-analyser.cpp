@@ -135,11 +135,6 @@ int main(int argc, char **argv) {
   EFM_INFO("Readings:");
   EFM_RES << "Timestamp"
           << ",";
-#ifdef ENABLE_IPMI
-  for (uint i = 0; i < psu_num; ++i) {
-    EFM_RES << "PSUPower" << i << ",";
-  }
-#endif
 #ifdef ENABLE_RAPL
   for (uint i = 0; i < socket_num; ++i) {
     EFM_RES << "SocketPower" << i << ",";
@@ -158,6 +153,11 @@ int main(int argc, char **argv) {
       std::string sfamily = AsmClassifier::FamilyString(family);
       EFM_RES << "Probability" << stype << sfamily << ",";
     }
+  }
+#endif
+#ifdef ENABLE_IPMI
+  for (uint i = 0; i < psu_num; ++i) {
+    EFM_RES << "PSUPower" << i << ",";
   }
 #endif
   EFM_RES << "SystemCpuUsage"
