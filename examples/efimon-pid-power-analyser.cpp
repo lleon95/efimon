@@ -125,7 +125,7 @@ int main(int argc, char **argv) {
   ProcStatObserver proc_stat{pid, efimon::ObserverScope::PROCESS, 1};
   ProcStatObserver sys_stat{0, efimon::ObserverScope::SYSTEM, 1};
   auto proc_stat_iface = proc_stat.GetReadings()[0];
-  auto sys_stat_iface = proc_stat.GetReadings()[0];
+  auto sys_stat_iface = sys_stat.GetReadings()[0];
   CPUReadings *proc_cpu_usage = dynamic_cast<CPUReadings *>(proc_stat_iface);
   CPUReadings *sys_cpu_usage = dynamic_cast<CPUReadings *>(sys_stat_iface);
   EFM_CHECK(proc_stat.Trigger());
@@ -234,6 +234,9 @@ int main(int argc, char **argv) {
 
     // PSU columns
 #ifdef ENABLE_IPMI
+    for (uint i = 0; i < psu_num; ++i) {
+      EFM_RES << psu_readings->psu_power.at(i) << ",";
+    }
 #endif
     EFM_RES << sys_cpu_usage->overall_usage << ",";
     EFM_RES << proc_cpu_usage->overall_usage << ",";
