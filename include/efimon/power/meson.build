@@ -16,3 +16,8 @@ if enable_rapl
     files('rapl.hpp'),
   ]
 endif
+if enable_ipmi
+  lib_power_headers += [
+    files('ipmi.hpp'),
+  ]
+endif

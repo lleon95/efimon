@@ -51,6 +51,18 @@ if enable_rapl
   )
 endif
 
+if enable_ipmi
+  executable('ipmi-testing',
+            [
+              files('ipmi-testing.cpp')
+            ],
+            cpp_args : cpp_args,
+            include_directories : [project_inc],
+            dependencies: [libefimon_dep],
+            install : false,
+  )
+endif
+
 if enable_pcm
   executable('pcm-testing',
             [

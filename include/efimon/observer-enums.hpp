@@ -42,6 +42,8 @@ enum class ObserverType {
   INTERVAL = 1 << 7,
   /** CPU instructions analysis */
   CPU_INSTRUCTIONS = 1 << 8,
+  /** PSU */
+  PSU = 1 << 9,
   /** All: singleton observer */
   ALL = 1 << 31
 };

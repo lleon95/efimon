@@ -43,3 +43,9 @@ if enable_sql
     files('logger/sqlite.cpp'),
   ]
 endif
+
+if enable_ipmi
+  lib_efimon_sources += [
+    files('power/ipmi.cpp'),
+  ]
+endif
