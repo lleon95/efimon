@@ -160,9 +160,11 @@ class RAPLMeterObserver : public Observer {
   /** Socket device */
   uint device_;
   /** Socket energy meters: Before */
-  std::vector<float> before_socket_meters_;
+  std::vector<double> before_socket_meters_;
   /** Socket energy meters: Current */
-  std::vector<float> after_socket_meters_;
+  std::vector<double> after_socket_meters_;
+  /** Socket energy meters: Maximum Range */
+  std::vector<double> max_socket_meters_;
   /** Readings from CPU */
   CPUReadings readings_;
 

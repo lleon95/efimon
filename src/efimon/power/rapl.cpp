@@ -43,28 +43,36 @@ RAPLMeterObserver::RAPLMeterObserver(const uint /* pid */,
 
 Status RAPLMeterObserver::GetSocketConsumption(const uint socket_id) {
   /* Make the powercap file */
-  std::string energy_file_name = "/sys/class/powercap/intel-rapl:";
-  energy_file_name += std::to_string(socket_id);
+  std::string path_file_name = "/sys/class/powercap/intel-rapl:";
+  path_file_name += std::to_string(socket_id);
+
+  std::string energy_file_name = path_file_name;
   energy_file_name += "/energy_uj";
 
+  std::string max_energy_file_name = path_file_name;
+  max_energy_file_name += "/max_energy_range_uj";
+
   /* Open file */
-  std::ifstream energy_file;
+  std::ifstream energy_file, max_energy_file;
   energy_file.open(energy_file_name);
-  if (!energy_file.is_open()) {
+  max_energy_file.open(max_energy_file_name);
+  if (!energy_file.is_open() || !max_energy_file.is_open()) {
     return Status{Status::NOT_FOUND, "The RAPL Interface cannot be opened"};
   }
 
-  std::string payload_uj;
+  std::string payload_uj, payload_maxuj;
   std::getline(energy_file, payload_uj);
+  std::getline(max_energy_file, payload_maxuj);
 
+  max_socket_meters_.at(socket_id) = std::stod(payload_maxuj) * 1e-06;
   if (!valid_) {
     /* Read two times */
-    before_socket_meters_.at(socket_id) = std::stof(payload_uj) * 1e-06;
-    after_socket_meters_.at(socket_id) = std::stof(payload_uj) * 1e-06;
+    before_socket_meters_.at(socket_id) = std::stod(payload_uj) * 1e-06;
+    after_socket_meters_.at(socket_id) = std::stod(payload_uj) * 1e-06;
   } else {
     std::swap(this->before_socket_meters_.at(socket_id),
               this->after_socket_meters_.at(socket_id));
-    after_socket_meters_.at(socket_id) = std::stof(payload_uj) * 1e-06;
+    after_socket_meters_.at(socket_id) = std::stod(payload_uj) * 1e-06;
   }
 
   return Status{};
@@ -99,9 +107,13 @@ Status RAPLMeterObserver::Trigger() {
 }
 
 void RAPLMeterObserver::ParseResults(const uint socket_id) {
-  float energy = this->after_socket_meters_.at(socket_id) -
-                 this->before_socket_meters_.at(socket_id);
-  float power = energy * 1000 / this->readings_.difference;
+  double before = this->before_socket_meters_.at(socket_id);
+  double after = this->after_socket_meters_.at(socket_id);
+  double maxrange = this->max_socket_meters_.at(socket_id);
+
+  double energy = after >= before ? after - before : maxrange - before + after;
+  double power = energy * 1000. / this->readings_.difference;
+
   this->readings_.socket_power.at(socket_id) = power;
   this->readings_.overall_power += power;
   if (this->valid_) {
@@ -168,6 +180,7 @@ Status RAPLMeterObserver::Reset() {
   this->readings_.socket_energy.resize(info_.GetNumSockets(), 0.f);
   this->before_socket_meters_.resize(info_.GetNumSockets(), 0.f);
   this->after_socket_meters_.resize(info_.GetNumSockets(), 0.f);
+  this->max_socket_meters_.resize(info_.GetNumSockets(), 0.f);
   this->readings_.core_power.resize(info_.GetLogicalCores(), 0.f);
   return Status{};
 }
