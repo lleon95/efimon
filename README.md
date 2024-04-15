@@ -42,12 +42,25 @@ You can switch the "-Dbuild-docs" or "-Dbuild-docs-only" to true if you want to 
 Compiling EfiMon follows the same process as any meson project. Please, follow the steps to have EfiMon on your system:
 
 ```bash
-meson builddir
+meson builddir $OPTIONS
 ninja -C builddinr
 sudo ninja -C builddir
 ```
 
 EfiMon will be installed under the `/usr/local/` prefix.
+
+For the `$OPTIONS`, you can select the following:
+
+| Option                 | Default Value    | Values        | Description                      |
+|------------------------|------------------|---------------|----------------------------------|
+| build-docs             | false            | [true, false] | Enable docs compilation          |
+| build-docs-only        | false            | [true, false] | Enable docs-only compilation     |
+| build-examples         | true             | [true, false] | Enable examples compilation      |
+| developer-mode         | true             | [true, false] | Enable developer mode            |
+| enable-pcm             | true             | [true, false] | Enable the Intel PCM             |
+| enable-perf            | true             | [true, false] | Enable the Linux Perf Tool       |
+| enable-rapl            | true             | [true, false] | Enable the RAPL Interface        |
+| enable-sql             | true             | [true, false] | Enable the SQL Logger            |
 
 ### Testing the installation
 
