@@ -42,12 +42,16 @@ int main(int argc, char **argv) {
     std::cout << "Sockets Detected: " << readings->socket_power.size()
               << std::endl;
     uint cont = 0;
-    for (const auto socket_energy : readings->socket_power) {
-      std::cout << "\t" << cont << ": " << (socket_energy / kDelay) << "  Watts"
-                << std::endl;
+    for (uint i = 0; i < readings->socket_power.size(); ++i) {
+      std::cout << "\t" << cont << ": " << (readings->socket_power[i])
+                << "  Watts" << std::endl;
+      std::cout << "\t" << cont << ": " << (readings->socket_energy[i])
+                << "  Joules" << std::endl;
     }
-    std::cout << "Average Power: " << (readings->overall_power / kDelay)
-              << " Watts" << std::endl;
+    std::cout << "Average Power: " << (readings->overall_power) << " Watts"
+              << std::endl;
+    std::cout << "Average Energy: " << (readings->overall_energy) << " Joules"
+              << std::endl;
   }
 
   return 0;

@@ -54,8 +54,9 @@ class RAPLMeterObserver : public Observer {
    * @return std::vector<Readings*> vector of readings from the observer.
    * In this case, the Readings* can be dynamic-casted to:
    *
-   * - CPUReadings. The usage metrics correspond to the number of instructions
-   * per nominal cycle, not to the CPU usage itself.
+   * - CPUReadings. The metrics here corresponds to the power measurements
+   * from RAPL. Usage metrics are not present. Please, use the power and
+   * energy metrics only
    *
    * More to be defined during the way
    */

@@ -91,6 +91,7 @@ IntelMeterObserver::IntelMeterObserver(const uint pid,
     }
 
     priv::pcm_mutex_.unlock();
+    this->Reset();
     this->Trigger();
   }
 
@@ -162,10 +163,13 @@ void IntelMeterObserver::ParseResults() {
 
   /* Add energy overall all sockets */
   for (uint i = 0; i < num_sockets; ++i) {
-    float pwr = pcm::getConsumedJoules(priv::socket_state_1_[i],
-                                       priv::socket_state_2_[i]);
+    float energy = pcm::getConsumedJoules(priv::socket_state_1_[i],
+                                          priv::socket_state_2_[i]);
+    float pwr = energy * 1000 / this->readings_.difference;
     this->readings_.overall_power += pwr;
+    this->readings_.overall_energy += energy;
     this->readings_.socket_power.push_back(pwr);
+    this->readings_.socket_energy.at(i) += energy;
     this->readings_.socket_usage[i] /= socket_core_count[i];
   }
 }
@@ -223,15 +227,18 @@ Status IntelMeterObserver::ClearInterval() {
 
 Status IntelMeterObserver::Reset() {
   std::scoped_lock<std::mutex> lock(priv::pcm_mutex_);
-  priv::pcm_instance_->resetPMU();
+  uint num_sockets = priv::pcm_instance_->getNumSockets();
   this->readings_.type = static_cast<uint>(ObserverType::NONE);
   this->readings_.timestamp = 0;
   this->readings_.difference = 0;
   this->readings_.overall_usage = -1;
   this->readings_.overall_power = -1;
+  this->readings_.overall_energy = 0;
   this->readings_.socket_power.clear();
+  this->readings_.core_energy.clear();
   this->readings_.core_usage.clear();
   this->readings_.socket_usage.clear();
+  this->readings_.socket_energy.resize(num_sockets, 0.f);
   return Status{};
 }
 

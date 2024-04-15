@@ -23,6 +23,8 @@ struct CPUReadings : public Readings {
   float overall_usage;
   /** Average power of all the cores */
   float overall_power;
+  /** Average energy of all the cores */
+  float overall_energy;
   /** Usage per core */
   std::vector<float> core_usage;
   /** Usage per socket */
@@ -31,6 +33,10 @@ struct CPUReadings : public Readings {
   std::vector<float> core_power;
   /** Power per socket */
   std::vector<float> socket_power;
+  /** Energy per core */
+  std::vector<float> core_energy;
+  /** Energy per socket */
+  std::vector<float> socket_energy;
   /** Destructor to enable the inheritance */
   virtual ~CPUReadings() = default;
 };

@@ -99,10 +99,15 @@ Status RAPLMeterObserver::Trigger() {
 }
 
 void RAPLMeterObserver::ParseResults(const uint socket_id) {
-  float val = this->after_socket_meters_.at(socket_id) -
-              this->before_socket_meters_.at(socket_id);
-  this->readings_.socket_power.at(socket_id) = val;
-  this->readings_.overall_power += val;
+  float energy = this->after_socket_meters_.at(socket_id) -
+                 this->before_socket_meters_.at(socket_id);
+  float power = energy * 1000 / this->readings_.difference;
+  this->readings_.socket_power.at(socket_id) = power;
+  this->readings_.overall_power += power;
+  if (this->valid_) {
+    this->readings_.socket_energy.at(socket_id) += energy;
+    this->readings_.overall_energy += energy;
+  }
 }
 
 std::vector<Readings*> RAPLMeterObserver::GetReadings() {
@@ -158,7 +163,9 @@ Status RAPLMeterObserver::Reset() {
   this->readings_.core_power.clear();
 
   this->readings_.overall_power = 0;
+  this->readings_.overall_energy = 0;
   this->readings_.socket_power.resize(info_.GetNumSockets(), 0.f);
+  this->readings_.socket_energy.resize(info_.GetNumSockets(), 0.f);
   this->before_socket_meters_.resize(info_.GetNumSockets(), 0.f);
   this->after_socket_meters_.resize(info_.GetNumSockets(), 0.f);
   this->readings_.core_power.resize(info_.GetLogicalCores(), 0.f);
