@@ -9,14 +9,20 @@
 #ifndef INCLUDE_EFIMON_PROC_CPUINFO_HPP_
 #define INCLUDE_EFIMON_PROC_CPUINFO_HPP_
 
+#include <efimon/status.hpp>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include <efimon/status.hpp>
-
 namespace efimon {
 
+/**
+ * @brief CPU Information Class
+ *
+ * This class allows us querying the CPU characteristics such as the number of
+ * cores per socket, the number of sockets, the number of logical cores and
+ * physical cores.
+ */
 class CPUInfo {
  public:
   /**
