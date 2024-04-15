@@ -26,6 +26,38 @@ sudo apt install ninja-build
 sudo pip3 install meson
 ```
 
+**Dependencies**
+
+First, it is important to recall that this is a Linux library. It requires the following dependencies:
+
+* libprocps
+* sqlite3 >= 3.31.1
+* Linux Perf
+* Intel RAPL
+* Free IPMI
+
+On Fedora 16, you can install some of these dependencies using:
+
+```bash
+# ProcPS
+yum install procps-ng-devel.x86_64 procps-ng.x86_64
+# Linux Perf
+yum install perf
+# SQLite
+yum install libsqlite3x.x86_64 libsqlite3x-devel.x86_64
+```
+
+On Ubuntu 20.04:
+
+```bash
+# ProcPS
+apt install libprocps-dev libprocps8
+# Linux Perf
+apt install linux-tools-common linux-tools-generic
+# SQLite
+apt install libsqlite3-dev libsqlite3-0
+```
+
 **Optional**
 
 For the documentation, you will require other dependencies like graphviz, java, texlive and doxygen. Please, install them by using:
@@ -70,6 +102,13 @@ T.B.D
 ## Usage
 
 T.B.D
+
+## Platforms
+
+EfiMon has been tested in the following platforms:
+
+* Ubuntu 20.04 with Intel Core i5 6000
+* Fedora 16 with AMD Epyc Zen2
 
 ## Additional Information
 
