@@ -93,6 +93,7 @@ For the `$OPTIONS`, you can select the following:
 | enable-perf            | true             | [true, false] | Enable the Linux Perf Tool       |
 | enable-rapl            | true             | [true, false] | Enable the RAPL Interface        |
 | enable-sql             | true             | [true, false] | Enable the SQL Logger            |
+| enable-ipmi            | true             | [true, false] | Enable the IPMI Logger           |
 
 ### Testing the installation
 

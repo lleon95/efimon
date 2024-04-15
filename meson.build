@@ -60,7 +60,7 @@ endif
 # Verify if IPMI OEM is installed
 enable_ipmi = false
 ipmi_oem_executable = find_program('ipmi-oem', required: false, native: true)
-if ipmi_oem_executable.found()
+if ipmi_oem_executable.found() and get_option('enable-ipmi')
   enable_ipmi = true
   cpp_args += ['-DENABLE_IPMI']
   message('IPMI found')

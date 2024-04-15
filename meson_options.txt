@@ -14,3 +14,4 @@ option('enable-pcm', type: 'boolean', value: true, description: 'Enable the Inte
 option('enable-rapl', type: 'boolean', value: true, description: 'Enable the RAPL Interface')
 option('enable-perf', type: 'boolean', value: true, description: 'Enable the Linux Perf Tool')
 option('enable-sql', type: 'boolean', value: true, description: 'Enable the SQL Logger')
+option('enable-ipmi', type: 'boolean', value: true, description: 'Enable the IPMI Tool')
