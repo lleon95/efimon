@@ -18,9 +18,12 @@ project('efimon', ['c','cpp'], version : '0.1.0',
 # Global variables and default definitions
 # -----------------------------------------------------------------------------
 cmake = import('cmake')
+fs = import('fs')
 
 project_inc = [include_directories('include')]
 project_deps = []
+c_args = ['-Werror']
+cpp_args = ['-Werror']
 
 # Find proc library
 cpp = meson.get_compiler('cpp')
@@ -28,13 +31,32 @@ libprocps_dep = cpp.find_library('libprocps', required: true)
 project_deps += libprocps_dep
 
 # Find SQLite3
-sqlite_dep = dependency('sqlite3', required: true)
-project_deps += sqlite_dep
+enable_sql = false
+sqlite_dep = dependency('sqlite3', required: false)
+if sqlite_dep.found() and get_option('enable-sql')
+  message('SQLite Found. Enabling')
+  enable_sql = true
+  project_deps += sqlite_dep
+  c_args += ['-DENABLE_SQLITE']
+  cpp_args += ['-DENABLE_SQLITE']
+else
+  warning('SQLite dependency not found. Disabling loggers related to SQLite')
+endif
 
 # Verify if Perf is installed
-perf_executable = find_program('perf', required: true, native: true)
+enable_perf = false
+perf_executable = find_program('perf', required: false, native: true)
+if perf_executable.found() and get_option('enable-perf')
+  enable_perf = true
+  message('Linux Perf Found. Enabling')
+  c_args += ['-DENABLE_PERF']
+  cpp_args += ['-DENABLE_PERF']
+else
+  warning('Linux Perf not found. Disabling code related to Linux Perf')
+endif
 
 # Add Intel PCM
+enable_pcm = false
 if get_option('enable-pcm')
   # Configure the CMake project
   opt_var = cmake.subproject_options()
@@ -44,10 +66,21 @@ if get_option('enable-pcm')
   # Fetch the dependency object
   pcm_dep = pcm_proj.dependency('PCM_SHARED')
   project_deps += pcm_dep
+  enable_pcm = true
+else
+  warning('Intel PCM is disabled')
 endif
 
-c_args = ['-Werror']
-cpp_args = ['-Werror']
+# Verify if RAPL exists
+enable_rapl = false
+if fs.is_dir('/sys/class/powercap/intel-rapl') and get_option('enable-rapl')
+  message('RAPL Found. Enabling')
+  c_args += ['-DENABLE_RAPL']
+  cpp_args += ['-DENABLE_RAPL']
+  enable_rapl = true
+else
+  warning('RAPL not found. Disabling code related to Intel RAPL')
+endif
 
 # -----------------------------------------------------------------------------
 # Developer mode options

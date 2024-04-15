@@ -15,28 +15,43 @@ executable('process-tracking',
            install : false,
 )
 
+if enable_sql
+  executable('sqlite-testing',
+            [
+              files('sqlite-testing.cpp')
+            ],
+            cpp_args : cpp_args,
+            include_directories : [project_inc],
+            dependencies: [libefimon_dep],
+            install : false,
+  )
+endif
 
-executable('sqlite-testing',
-           [
-             files('sqlite-testing.cpp')
-           ],
-           cpp_args : cpp_args,
-           include_directories : [project_inc],
-           dependencies: [libefimon_dep],
-           install : false,
-)
+if enable_perf
+  executable('perf-testing',
+            [
+              files('perf-testing.cpp')
+            ],
+            cpp_args : cpp_args,
+            include_directories : [project_inc],
+            dependencies: [libefimon_dep],
+            install : false,
+  )
+endif
 
-executable('perf-testing',
-           [
-             files('perf-testing.cpp')
-           ],
-           cpp_args : cpp_args,
-           include_directories : [project_inc],
-           dependencies: [libefimon_dep],
-           install : false,
-)
+if enable_rapl
+  executable('rapl-testing',
+            [
+              files('rapl-testing.cpp')
+            ],
+            cpp_args : cpp_args,
+            include_directories : [project_inc],
+            dependencies: [libefimon_dep],
+            install : false,
+  )
+endif
 
-if get_option('enable-pcm')
+if enable_pcm
   executable('pcm-testing',
             [
               files('pcm-testing.cpp')

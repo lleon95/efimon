@@ -35,7 +35,9 @@ int main() {
                    "-----\n"
                 << "\tOverall Use: " << readings->overall_usage << " IPC"
                 << std::endl
-                << "\tOverall Power: " << readings->overall_power << " Joules"
+                << "\tOverall Energy: " << readings->overall_energy << " Joules"
+                << std::endl
+                << "\tOverall Power: " << readings->overall_power << " Watts"
                 << std::endl;
       std::cout << "\tCore Usage: ";
       for (auto val : readings->core_usage) {
@@ -47,6 +49,11 @@ int main() {
       }
       std::cout << " IPC" << std::endl << "\tSocket Power: ";
       for (auto val : readings->socket_power) {
+        std::cout << val << " ";
+      }
+      std::cout << " Watts" << std::endl;
+      std::cout << " IPC" << std::endl << "\tSocket Energy: ";
+      for (auto val : readings->socket_energy) {
         std::cout << val << " ";
       }
       std::cout << " Joules" << std::endl;

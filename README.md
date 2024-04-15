@@ -26,6 +26,38 @@ sudo apt install ninja-build
 sudo pip3 install meson
 ```
 
+**Dependencies**
+
+First, it is important to recall that this is a Linux library. It requires the following dependencies:
+
+* libprocps
+* sqlite3 >= 3.31.1
+* Linux Perf
+* Intel RAPL
+* Free IPMI
+
+On Fedora 16, you can install some of these dependencies using:
+
+```bash
+# ProcPS
+yum install procps-ng-devel.x86_64 procps-ng.x86_64
+# Linux Perf
+yum install perf
+# SQLite
+yum install libsqlite3x.x86_64 libsqlite3x-devel.x86_64
+```
+
+On Ubuntu 20.04:
+
+```bash
+# ProcPS
+apt install libprocps-dev libprocps8
+# Linux Perf
+apt install linux-tools-common linux-tools-generic
+# SQLite
+apt install libsqlite3-dev libsqlite3-0
+```
+
 **Optional**
 
 For the documentation, you will require other dependencies like graphviz, java, texlive and doxygen. Please, install them by using:
@@ -42,12 +74,25 @@ You can switch the "-Dbuild-docs" or "-Dbuild-docs-only" to true if you want to 
 Compiling EfiMon follows the same process as any meson project. Please, follow the steps to have EfiMon on your system:
 
 ```bash
-meson builddir
+meson builddir $OPTIONS
 ninja -C builddinr
 sudo ninja -C builddir
 ```
 
 EfiMon will be installed under the `/usr/local/` prefix.
+
+For the `$OPTIONS`, you can select the following:
+
+| Option                 | Default Value    | Values        | Description                      |
+|------------------------|------------------|---------------|----------------------------------|
+| build-docs             | false            | [true, false] | Enable docs compilation          |
+| build-docs-only        | false            | [true, false] | Enable docs-only compilation     |
+| build-examples         | true             | [true, false] | Enable examples compilation      |
+| developer-mode         | true             | [true, false] | Enable developer mode            |
+| enable-pcm             | true             | [true, false] | Enable the Intel PCM             |
+| enable-perf            | true             | [true, false] | Enable the Linux Perf Tool       |
+| enable-rapl            | true             | [true, false] | Enable the RAPL Interface        |
+| enable-sql             | true             | [true, false] | Enable the SQL Logger            |
 
 ### Testing the installation
 
@@ -57,6 +102,13 @@ T.B.D
 ## Usage
 
 T.B.D
+
+## Platforms
+
+EfiMon has been tested in the following platforms:
+
+* Ubuntu 20.04 with Intel Core i5 6000
+* Fedora 16 with AMD Epyc Zen2
 
 ## Additional Information
 
