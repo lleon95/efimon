@@ -51,7 +51,7 @@ if enable_rapl
   )
 endif
 
-if ipmi_oem_executable.found()
+if enable_ipmi
   executable('ipmi-testing',
             [
               files('ipmi-testing.cpp')

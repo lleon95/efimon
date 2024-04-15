@@ -44,7 +44,7 @@ if enable_sql
   ]
 endif
 
-if ipmi_oem_executable.found()
+if enable_ipmi
   lib_efimon_sources += [
     files('power/ipmi.cpp'),
   ]
