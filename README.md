@@ -93,6 +93,7 @@ For the `$OPTIONS`, you can select the following:
 | enable-perf            | true             | [true, false] | Enable the Linux Perf Tool       |
 | enable-rapl            | true             | [true, false] | Enable the RAPL Interface        |
 | enable-sql             | true             | [true, false] | Enable the SQL Logger            |
+| enable-ipmi            | true             | [true, false] | Enable the IPMI Logger           |
 
 ### Testing the installation
 
@@ -101,7 +102,13 @@ T.B.D
 
 ## Usage
 
-T.B.D
+Currently, we have been focused on an analyser for measuring the power consumption based on the histograms.
+
+```bash
+PID=2000 # Process ID
+STIME=10 # Metering during 10 seconds
+sudo efimon-pid-power-analyser -p ${PID} -s ${STIME} > consumption.csv
+```
 
 ## Platforms
 

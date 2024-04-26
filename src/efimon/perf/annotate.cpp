@@ -90,6 +90,7 @@ Status PerfAnnotateObserver::ParseResults() {
 
   /* Cleat the histogram */
   this->readings_.histogram.clear();
+  this->readings_.classification.clear();
 
   /* Read the file line by line */
   std::string line;
