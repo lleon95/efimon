@@ -102,7 +102,13 @@ T.B.D
 
 ## Usage
 
-T.B.D
+Currently, we have been focused on an analyser for measuring the power consumption based on the histograms.
+
+```bash
+PID=2000 # Process ID
+STIME=10 # Metering during 10 seconds
+sudo efimon-pid-power-analyser -p ${PID} -s ${STIME} > consumption.csv
+```
 
 ## Platforms
 
