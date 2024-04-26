@@ -1,0 +1,17 @@
+#
+# See LICENSE for more information about licensing
+#  Copyright 2023
+#
+# Author: Luis G. Leon Vega <luis.leon@ieee.org>
+#
+
+option('library-only', type: 'boolean', value: false, description: 'Disable the compilation of binaries/executables')
+option('build-examples', type: 'boolean', value: true, description: 'Enable examples compilation')
+option('build-docs', type: 'boolean', value: false, description: 'Enable docs compilation')
+option('build-docs-only', type: 'boolean', value: false, description: 'Enable docs-only compilation')
+option('developer-mode', type : 'boolean', value : true, yield : true, description: 'Enable developer mode')
+option('enable-pcm', type: 'boolean', value: true, description: 'Enable the Intel PCM')
+option('enable-rapl', type: 'boolean', value: true, description: 'Enable the RAPL Interface')
+option('enable-perf', type: 'boolean', value: true, description: 'Enable the Linux Perf Tool')
+option('enable-sql', type: 'boolean', value: true, description: 'Enable the SQL Logger')
+option('enable-ipmi', type: 'boolean', value: true, description: 'Enable the IPMI Tool')
