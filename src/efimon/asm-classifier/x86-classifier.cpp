@@ -14,8 +14,54 @@
 
 namespace efimon {
 
-InstructionPair x86Classifier::Classify(
-    const std::string &inst) const noexcept {
+const std::string x86Classifier::OperandTypes(const std::string &operands) const
+    noexcept {
+  std::string res = "";
+  std::string firstop = "";
+  std::string secondop = "";
+
+  auto classify = [=](const std::string &in) {
+    if (in.find("(") != std::string::npos) {
+      return "m";
+    } else if (in.find("$") != std::string::npos) {
+      return "i";
+    } else if (in.find("%") != std::string::npos) {
+      return "r";
+    } else {
+      return "u";
+    }
+  };
+
+  auto idx_firstmem = operands.find("),");
+  auto idx_firstcomma = operands.find(",");
+  if (idx_firstcomma == std::string::npos) {
+    return "u";  // unique/none operand
+  }
+
+  /* Check if there is ),. Which means that the first operand is memory */
+  if (idx_firstmem != std::string::npos) {
+    res += "m";
+    secondop = operands.substr(idx_firstmem + 2);
+  } else {
+    firstop = operands.substr(0, idx_firstcomma);
+    secondop = operands.substr(idx_firstcomma + 1);
+  }
+
+  /* Check the other operands */
+  if (!firstop.empty()) {
+    res = classify(firstop) + res;
+  }
+
+  if (!secondop.empty()) {
+    res = res + classify(secondop);
+  }
+
+  return res;
+}
+
+InstructionPair x86Classifier::Classify(const std::string &inst,
+                                        const std::string & /*operands*/) const
+    noexcept {
   static const std::string kArithOp[] = {"add", "sub", "div",  "mul",
                                          "dp",  "abs", "sign", "avg",
                                          "dec", "inc", "neg"};
