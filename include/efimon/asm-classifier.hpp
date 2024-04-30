@@ -12,6 +12,7 @@
 
 #include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
 
 namespace efimon {
@@ -58,13 +59,41 @@ enum class InstructionType {
   UNCLASSIFIED
 };
 
+/**
+ * Classifies the operands in different types
+ *
+ * It highlights if the operands come from registers or memory.
+ * It is represented through bit shifting
+ *
+ * From the binary representation, it takes 4 bits: ooii, where
+ * o stands for output representation and i stands for input
+ */
+enum class DataOrigin {
+  /** Indicates that the operands do not have a explicit memory */
+  UNKNOWN = 0b00,
+  /** Indicates that data comes from memory */
+  MEMORY = 0b01,
+  /** Indicates that data comes from processor registers */
+  REGISTER = 0b10,
+  /** Indicates that data comes as immediate value */
+  IMMEDIATE = 0b11,
+  /** Indicates the input shift */
+  INPUT = 0,
+  /** Indicates the output shift */
+  OUTPUT = 2,
+  /** Sliding mask */
+  MASK = 0b11,
+};
+
 }  // namespace assembly
 
 /**
  * Type to return the type and family in a single run
+ * The first type determines the instruction type, the second the family or
+ * group and the third the data origin
  */
 using InstructionPair =
-    std::pair<assembly::InstructionType, assembly::InstructionFamily>;
+    std::tuple<assembly::InstructionType, assembly::InstructionFamily, uint8_t>;
 
 /**
  * Interface to classify the instructions into families and types
@@ -99,14 +128,33 @@ class AsmClassifier {
 
   /**
    * Gets the string from the family enumerator (InstructionFamily)
+   * @param family family of instruction
+   * @return instruction family in string
    */
   static const std::string FamilyString(
       const assembly::InstructionFamily family);
 
   /**
    * Gets the string from the type enumerator (InstructionType)
+   * @param type type of instruction
+   * @return instruction type in string
    */
   static const std::string TypeString(const assembly::InstructionType type);
+
+  /**
+   * Gets the string from the DataOrigin
+   * @param origin origin of the data
+   * @return instruction origin in string
+   */
+  static const std::string OriginString(const uint8_t origin);
+
+  /**
+   * Gets the decomposition from the DataOrigin
+   * @param origin origin of the data
+   * @return instruction origin in pair (input, output)
+   */
+  static const std::pair<assembly::DataOrigin, assembly::DataOrigin>
+  OriginDecomposed(const uint8_t origin);
 
   /**
    * @brief Constructs a new classifier.

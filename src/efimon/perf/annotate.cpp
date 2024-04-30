@@ -132,17 +132,30 @@ Status PerfAnnotateObserver::ParseResults() {
       this->readings_.histogram[assembly] += percent;
     }
 
-    if (this->readings_.classification[classification.first].find(
-            classification.second) ==
-        this->readings_.classification[classification.first].end()) {
-      this->readings_
-          .classification[classification.first][classification.second] =
-          percent;
-    } else {
-      this->readings_
-          .classification[classification.first][classification.second] +=
-          percent;
+    /* Handle the creation of the maps */
+    bool family_found =
+        this->readings_.classification[std::get<0>(classification)].find(
+            std::get<1>(classification)) !=
+        this->readings_.classification[std::get<0>(classification)].end();
+    if (!family_found) {
+      this->readings_.classification[std::get<0>(classification)]
+                                    [std::get<1>(classification)] = {};
     }
+    bool origin_found = this->readings_
+                            .classification[std::get<0>(classification)]
+                                           [std::get<1>(classification)]
+                            .find(std::get<2>(classification)) !=
+                        this->readings_
+                            .classification[std::get<0>(classification)]
+                                           [std::get<1>(classification)]
+                            .end();
+    if (!origin_found) {
+      this->readings_.classification[std::get<0>(classification)][std::get<1>(
+          classification)][std::get<2>(classification)] = 0.f;
+    }
+
+    this->readings_.classification[std::get<0>(classification)][std::get<1>(
+        classification)][std::get<2>(classification)] += percent;
   }
 
   this->valid_ = true;

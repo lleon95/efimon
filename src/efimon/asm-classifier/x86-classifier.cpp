@@ -60,7 +60,7 @@ const std::string x86Classifier::OperandTypes(const std::string &operands) const
 }
 
 InstructionPair x86Classifier::Classify(const std::string &inst,
-                                        const std::string & /*operands*/) const
+                                        const std::string &operands) const
     noexcept {
   static const std::string kArithOp[] = {"add", "sub", "div",  "mul",
                                          "dp",  "abs", "sign", "avg",
@@ -83,10 +83,34 @@ InstructionPair x86Classifier::Classify(const std::string &inst,
   InstructionType type = InstructionType::UNCLASSIFIED; /* SCALAR, VECTOR... */
   InstructionFamily family =
       InstructionFamily::OTHER; /* ARITH, LOG, MEM, BRCH, JMP, OTHER */
+  uint8_t origin = 0;           /* Origin: OOII */
 
   if (inst.empty())
     return InstructionPair{InstructionType::UNCLASSIFIED,
-                           InstructionFamily::OTHER};
+                           InstructionFamily::OTHER, origin};
+
+  /* Determine the origin */
+  auto detorigin = [](const char in) {
+    switch (in) {
+      case 'r':
+        return DataOrigin::REGISTER;
+      case 'm':
+        return DataOrigin::MEMORY;
+      case 'i':
+        return DataOrigin::IMMEDIATE;
+      default:
+        return DataOrigin::UNKNOWN;
+    }
+  };
+
+  if (operands.size() == 2) {
+    uint8_t o = static_cast<uint8_t>(detorigin(operands[0]));
+    uint8_t i = static_cast<uint8_t>(detorigin(operands[1]));
+    origin = (i << static_cast<uint8_t>(DataOrigin::INPUT)) |
+             (o << static_cast<uint8_t>(DataOrigin::OUTPUT));
+  } else if (operands.size() == 1) {
+    origin = static_cast<uint8_t>(detorigin(operands[0]));
+  }
 
   /* Determine the family */
   auto pred = [&](const std::string &c) {
@@ -131,7 +155,7 @@ InstructionPair x86Classifier::Classify(const std::string &inst,
       break;
   }
 
-  return InstructionPair{type, family};
+  return InstructionPair{type, family, origin};
 }
 
 } /* namespace efimon */
