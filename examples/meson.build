@@ -74,3 +74,13 @@ if enable_pcm
             install : false,
   )
 endif
+
+executable('efimon-pid-power-analyser',
+          [
+            files('efimon-pid-power-analyser.cpp')
+          ],
+          cpp_args : cpp_args,
+          include_directories : [project_inc],
+          dependencies: [libefimon_dep],
+          install : false,
+)
