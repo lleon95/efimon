@@ -51,10 +51,11 @@
 
 using namespace efimon;  // NOLINT
 
-static constexpr int kDelay = 1;         // 1 second
-static constexpr int kFrequency = 1000;  // 1 kHz
+static constexpr int kDelay = 1;            // 1 second
+static constexpr uint kDefFrequency = 100;  // 100 Hz
 
 int main(int argc, char **argv) {
+  uint frequency = kDefFrequency;
   // Check root
   if (0 != geteuid()) {
     EFM_ERROR("ERROR: This application must be called as root" << std::endl);
@@ -69,6 +70,7 @@ int main(int argc, char **argv) {
     msg += std::string(argv[0]);
     msg += " -p,--pid PID";
     msg += " -s,--samples SAMPLES";
+    msg += " -f,--frequency FREQUENCY_HZ";
     EFM_ERROR(msg);
   }
 
@@ -95,6 +97,12 @@ int main(int argc, char **argv) {
   uint timelimit =
       std::stoi(argparser.Exists("-s") ? argparser.GetOption("-s")
                                        : argparser.GetOption("--samples"));
+
+  if (argparser.Exists("-f") || argparser.Exists("--frequency")) {
+    frequency =
+        std::stoi(argparser.Exists("-f") ? argparser.GetOption("-f")
+                                         : argparser.GetOption("--frequency"));
+  }
   EFM_INFO(std::string("Analysing PID ") + std::to_string(pid));
 
   // ------------ Configure all tools ------------
@@ -118,8 +126,8 @@ int main(int argc, char **argv) {
 #endif
 #ifdef ENABLE_PERF
   EFM_INFO("Configuring PERF");
-  PerfRecordObserver perf_record{pid, ObserverScope::PROCESS, kDelay,
-                                 kFrequency, true};
+  PerfRecordObserver perf_record{pid, ObserverScope::PROCESS, kDelay, frequency,
+                                 true};
   PerfAnnotateObserver perf_annotate{perf_record};
 #endif
   ProcStatObserver proc_stat{pid, efimon::ObserverScope::PROCESS, 1};
