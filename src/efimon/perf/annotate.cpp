@@ -7,19 +7,19 @@
  * @copyright Copyright (c) 2024. See License for Licensing
  */
 
-#include <cstdlib>
 #include <efimon/observer-enums.hpp>
 #include <efimon/observer.hpp>
 #include <efimon/perf/annotate.hpp>
 #include <efimon/readings.hpp>
 #include <efimon/status.hpp>
-#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
+
+#include <third-party/pstream.hpp>
 
 #ifndef PERF_ANNOTATE_THRES
 #define PERF_ANNOTATE_THRES 0.01
@@ -57,7 +57,7 @@ void PerfAnnotateObserver::ReconstructPath() {
   this->command_prefix_ +=
       " && perf annotate -q --percent-type global-period -i ";
   this->command_suffix_ = " | sort -r -k2,1n";
-  this->command_suffix_ += " > " + filename;
+  // this->command_suffix_ += " > " + filename;
 }
 
 Status PerfAnnotateObserver::Trigger() {
@@ -72,19 +72,20 @@ Status PerfAnnotateObserver::Trigger() {
   std::string cmd = this->command_prefix_ +
                     std::string(this->record_.path_to_perf_data_) +
                     this->command_suffix_;
-  int retv = std::system(cmd.c_str());
-  if (retv) {
+
+  redi::ipstream ip(cmd, redi::pstreambuf::pstdout);
+  if (!ip.is_open()) {
     ret = Status{Status::FILE_ERROR, "Cannot execute perf annotate command"};
+    return ret;
   }
 
   /* Parsing the results */
-  ret = this->ParseResults();
+  ret = this->ParseResults(ip);
   return ret;
 }
 
-Status PerfAnnotateObserver::ParseResults() {
-  std::ifstream ann_file(this->annotation_);
-  if (!ann_file.is_open()) {
+Status PerfAnnotateObserver::ParseResults(redi::ipstream& ip) {
+  if (!ip.is_open()) {
     this->valid_ = false;
     return Status{Status::FILE_ERROR, "Cannot open annotation file"};
   }
@@ -95,7 +96,7 @@ Status PerfAnnotateObserver::ParseResults() {
 
   /* Read the file line by line */
   std::string line;
-  while (std::getline(ann_file, line)) {
+  while (std::getline(ip, line)) {
     /* Variables of interest */
     float percent = 0.f;
     std::string assembly;

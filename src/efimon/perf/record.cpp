@@ -8,12 +8,12 @@
  */
 
 #include <algorithm>
-#include <cstdlib>
 #include <efimon/perf/record.hpp>
 #include <filesystem>
 #include <iostream>
 #include <mutex>  // NOLINT
 #include <string>
+#include <third-party/pstream.hpp>
 #include <unordered_map>
 
 static std::mutex singleton_mutex_;
@@ -125,7 +125,13 @@ Status PerfRecordObserver::Trigger() {
   }
 
   auto target_path = this->tmp_folder_path_ / "perf.data.ulock";
-  std::system(this->perf_cmd_.c_str());
+  redi::ipstream ip(this->perf_cmd_);
+  if (!ip.is_open()) {
+    return Status{Status::FILE_ERROR, "Cannot execute perf record command"};
+  }
+  std::string line;
+  while (std::getline(ip, line)) {
+  }
   this->MovePerfData(this->tmp_folder_path_ / "perf.data", target_path);
 
   auto time = GetUptime();
