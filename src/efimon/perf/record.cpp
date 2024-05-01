@@ -95,7 +95,7 @@ bool PerfRecordObserver::CheckAlive() {
 
 void PerfRecordObserver::MakePerfCommand() {
   this->perf_cmd_ = "cd " + std::string(this->tmp_folder_path_);
-  this->perf_cmd_ += " && perf record -q -F";
+  this->perf_cmd_ += " && perf record -e instructions -q -F";
   this->perf_cmd_ += std::to_string(this->frequency_);
   this->perf_cmd_ += " -g -v -p ";
   this->perf_cmd_ += std::to_string(this->pid_);
