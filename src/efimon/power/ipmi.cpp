@@ -7,15 +7,12 @@
  * @copyright Copyright (c) 2024. See License for Licensing
  */
 
-#include <unistd.h>
-
 #include <cstdint>
-#include <cstdlib>
 #include <efimon/power/ipmi.hpp>
 #include <efimon/status.hpp>
-#include <filesystem>
 #include <fstream>
 #include <string>
+#include <third-party/pstream.hpp>
 #include <vector>
 
 namespace efimon {
@@ -61,28 +58,19 @@ IPMIMeterObserver::IPMIMeterObserver(const uint /* pid */,
 
 Status IPMIMeterObserver::GetInfo() {
   /* Create the command from a tempfile name */
-  auto tmp_filename_path =
-      std::filesystem::temp_directory_path() /
-      (std::string("efimon-ipmi-info-") + std::to_string(this->pid_));
-  std::string command =
-      std::string(kIPMIInfoCmd) + " > " + std::string(tmp_filename_path);
+  std::string command = std::string(kIPMIInfoCmd);
 
   /* Execute the command */
-  std::system(command.c_str());
-
-  /* Parse the file */
-  std::ifstream info_file;
-  info_file.open(tmp_filename_path);
-  if (!info_file.is_open()) {
-    std::filesystem::remove(tmp_filename_path);
-    return Status{Status::NOT_FOUND, "The IPMI file cannot be opened"};
+  redi::ipstream ip(command, redi::pstreambuf::pstdout);
+  if (!ip.is_open()) {
+    return Status{Status::FILE_ERROR, "Cannot execute ipmi info command"};
   }
 
   this->max_power_.clear();
   this->num_psus_ = 0;
 
   std::string payload;
-  while (std::getline(info_file, payload)) {
+  while (std::getline(ip, payload)) {
     std::string::size_type idx_word, idx_colon, idx_watts;
     idx_word = payload.find("Rated Watts");
     idx_colon = payload.find(": ");
@@ -98,7 +86,6 @@ Status IPMIMeterObserver::GetInfo() {
   }
 
   /* Remove after use */
-  std::filesystem::remove(tmp_filename_path);
   if (!this->num_psus_) {
     return Status{Status::NOT_FOUND, "Cannot find compatible PSUs"};
   }
@@ -135,29 +122,20 @@ Status IPMIMeterObserver::Trigger() {
 }
 
 Status IPMIMeterObserver::GetPower(const uint psu_id) {
-  /* Create the command from a tempfile name */
-  auto tmp_filename_path =
-      std::filesystem::temp_directory_path() /
-      (std::string("efimon-ipmi-power-") + std::to_string(this->pid_) +
-       std::string("-p") + std::to_string(psu_id));
-  std::string command = std::string(kIPMIPwrCmd) + " " +
-                        std::to_string(psu_id + 1) + " > " +
-                        std::string(tmp_filename_path);
+  std::string command =
+      std::string(kIPMIPwrCmd) + " " + std::to_string(psu_id + 1);
 
   /* Execute the command */
-  std::system(command.c_str());
+  redi::ipstream ip(command, redi::pstreambuf::pstdout);
 
-  /* Parse the file */
-  std::ifstream info_file;
-  info_file.open(tmp_filename_path);
-  if (!info_file.is_open()) {
-    std::filesystem::remove(tmp_filename_path);
+  /* Parse the output */
+  if (!ip.is_open()) {
     return Status{Status::NOT_FOUND, "The IPMI power file cannot be opened"};
   }
 
   std::string payload;
   uint occurrences = 0;
-  while (std::getline(info_file, payload)) {
+  while (std::getline(ip, payload)) {
     std::string::size_type idx_word, idx_colon, idx_watts;
     idx_word = payload.find("Instantaneous Power");
     idx_colon = payload.find(": ");
@@ -172,9 +150,6 @@ Status IPMIMeterObserver::GetPower(const uint psu_id) {
       ++occurrences;
     }
   }
-
-  /* Remove after use */
-  std::filesystem::remove(tmp_filename_path);
 
   if (!occurrences) {
     return Status{Status::NOT_FOUND,
