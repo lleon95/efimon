@@ -178,6 +178,10 @@ namespace redi
       int
       error() const;
 
+      /// Gets the PID
+      pid_t
+      getpid();
+
     protected:
       /// Transfer characters to the pipe when character buffer overflows.
       int_type
@@ -342,6 +346,10 @@ namespace redi
       /// pclose(3) does.
       int
       close();
+
+      /// Gets the PID
+      int
+      getpid();
 
       /// Report whether the stream's buffer has been initialised.
       bool
@@ -1482,6 +1490,17 @@ namespace redi
     }
 
   /**
+   * Gets the PID
+   * @return pid_t 
+   */
+  template <typename C, typename T>
+    pid_t
+    basic_pstreambuf<C,T>::getpid()
+    {
+      return ppid_;
+    }
+
+  /**
    * Creates pipes as specified by @a mode and calls @c fork() to create
    * a new process. If the fork is successful the parent process stores
    * the child's PID and the opened pipes and the child process replaces
@@ -2285,6 +2304,17 @@ namespace redi
     {
     }
 
+  /**
+   * Gets the PID
+   * @return pid_t 
+   */
+  template <typename C, typename T>
+    inline pid_t
+    pstream_common<C,T>::getpid()
+    {
+      return buf_.getpid();
+    }
+  
   /**
    * Calls rdbuf()->open( @a command , @a mode )
    * and sets @c failbit on error.
