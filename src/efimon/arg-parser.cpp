@@ -29,6 +29,12 @@ bool ArgParser::Exists(const std::string &option) const noexcept {
 }
 
 const std::string &ArgParser::GetOption(const std::string &option) const {
+  std::vector<std::string>::const_iterator it = this->GetBegin(option);
+  return *it;
+}
+
+std::vector<std::string>::const_iterator ArgParser::GetBegin(
+    const std::string &option) const {
   /* Check if it exists */
   if (!this->Exists(option)) {
     throw std::runtime_error("Cannot get non-existing option");
@@ -43,6 +49,11 @@ const std::string &ArgParser::GetOption(const std::string &option) const {
     throw std::runtime_error("Switched tried to be accessed as option-value");
   }
 
-  return *itr;
+  return itr;
 }
+
+std::vector<std::string>::const_iterator ArgParser::GetEnd() const {
+  return this->arguments_.end();
+}
+
 } /* namespace efimon */

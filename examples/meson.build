@@ -74,3 +74,13 @@ if enable_pcm
             install : false,
   )
 endif
+
+executable('process-manager',
+          [
+            files('process-manager.cpp')
+          ],
+          cpp_args : cpp_args,
+          include_directories : [project_inc],
+          dependencies: [libefimon_dep],
+          install : false,
+)

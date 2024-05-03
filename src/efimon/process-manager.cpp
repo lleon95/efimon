@@ -10,6 +10,8 @@
 
 #include <third-party/pstream.hpp>
 
+#include <iostream>
+
 namespace efimon {
 
 ProcessManager::ProcessManager(const std::string &cmd, const Mode mode,
@@ -88,6 +90,8 @@ Status ProcessManager::Sync() {
   while (std::getline(this->ip_, line)) {
     if (Mode::SILENT != this->mode_ && this->stream_) {
       (*stream_) << line;
+    } else if (Mode::SILENT != this->mode_) {
+      std::cerr << line;
     }
   }
 
