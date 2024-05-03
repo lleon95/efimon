@@ -89,9 +89,9 @@ Status ProcessManager::Sync() {
   std::string line;
   while (std::getline(this->ip_, line)) {
     if (Mode::SILENT != this->mode_ && this->stream_) {
-      (*stream_) << line;
+      (*stream_) << line << std::endl;
     } else if (Mode::SILENT != this->mode_) {
-      std::cerr << line;
+      std::cerr << line << std::endl;
     }
   }
 
