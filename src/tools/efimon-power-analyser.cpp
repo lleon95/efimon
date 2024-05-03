@@ -30,19 +30,36 @@
 #include <efimon/power/ipmi.hpp>
 #include <efimon/power/rapl.hpp>
 #include <efimon/proc/stat.hpp>
+#include <efimon/process-manager.hpp>
+
+#include <third-party/pstream.hpp>
+
+#include <condition_variable>  // NOLINT
 #include <iostream>
+#include <mutex>  // NOLINT
 #include <string>
+#include <thread>  // NOLINT
 
 #define EFM_INFO(msg) \
   { std::cerr << "[INFO]: " << msg << std::endl; }
 #define EFM_WARN(msg) \
   { std::cerr << "[WARNING]: " << msg << std::endl; }
+#define EFM_WARN_AND_BREAK(msg)                     \
+  {                                                 \
+    std::cerr << "[WARNING]: " << msg << std::endl; \
+    break;                                          \
+  }
 #define EFM_ERROR(msg)                            \
   {                                               \
     std::cerr << "[ERROR]: " << msg << std::endl; \
     return -1;                                    \
   }
-#define EFM_CHECK(inst)                           \
+#define EFM_CHECK(inst, func)                \
+  {                                          \
+    Status s_ = (inst);                      \
+    if (s_.code != Status::OK) func(s_.msg); \
+  }
+#define EFM_CRITICAL_CHECK(inst)                  \
   {                                               \
     Status s_ = (inst);                           \
     if (s_.code != Status::OK) EFM_ERROR(s_.msg); \
@@ -51,26 +68,97 @@
 
 using namespace efimon;  // NOLINT
 
-static constexpr int kDelay = 1;            // 1 second
-static constexpr uint kDefFrequency = 100;  // 100 Hz
+static constexpr int kDelay = 1;                // 1 second
+static constexpr uint kDefFrequency = 100;      // 100 Hz
+static constexpr int kThreadCheckTime = 10;     // 10 millis
+static constexpr uint kDefaultTimelimit = 100;  // 100 samples
+
+void launch_command(ProcessManager &proc,                        // NOLINT
+                    const std::vector<std::string> &args,        // NOLINT
+                    std::mutex &m, std::condition_variable &cv,  // NOLINT
+                    bool &close,                                 // NOLINT
+                    bool &terminated) {                          // NOLINT
+  // Create the process and launch it
+  Status st;
+  uint count = args.size();
+
+  m.lock();
+  if (count == 1) {
+    st = proc.Open(args[0], ProcessManager::Mode::SILENT);
+  } else {
+    st = proc.Open(args[0], args, ProcessManager::Mode::SILENT);
+  }
+  m.unlock();
+
+  if (Status::OK != st.code) {
+    m.lock();
+    terminated = true;
+    m.unlock();
+    cv.notify_one();
+    return;
+  }
+  cv.notify_one();
+
+  bool local_close = false;
+  while (!local_close) {
+    if (!proc.IsRunning()) {
+      m.lock();
+      terminated = true;
+      m.unlock();
+      break;
+    }
+
+    // Sleep while running
+    std::this_thread::sleep_for(std::chrono::milliseconds(kThreadCheckTime));
+
+    // Check close status
+    m.lock();
+    local_close = close;
+    m.unlock();
+  }
+  m.lock();
+  proc.Close();
+  m.unlock();
+}
 
 int main(int argc, char **argv) {
+  // Analyser control
   uint frequency = kDefFrequency;
+  uint timelimit = kDefaultTimelimit;
+  uint pid = 0;
+
+  // Process management
+  std::thread manager_thread;
+  ProcessManager manager;
+  bool terminated = false;
+  bool close = false;
+  std::mutex manager_mutex;
+  std::vector<std::string> manager_args;
+  std::condition_variable manager_cv;
+
   // Check root
   if (0 != geteuid()) {
-    EFM_ERROR("ERROR: This application must be called as root" << std::endl);
+    EFM_ERROR("ERROR: This application must be called as root");
   }
 
-  // Check arguments
+  // ------------ Arguments ------------
   ArgParser argparser(argc, argv);
-  if (argc < 5 || !(argparser.Exists("-p") || argparser.Exists("--pid"))) {
+  bool check_pid = argparser.Exists("-p") || argparser.Exists("--pid");
+  bool check_cmd = argparser.Exists("-c");
+  bool check_frequency =
+      argparser.Exists("-f") || argparser.Exists("--frequency");
+  bool check_samples = argparser.Exists("-s") || argparser.Exists("--samples");
+  bool check_process = check_cmd ^ check_pid;
+  if (argc < 3 || !(check_process)) {
     std::string msg =
         "ERROR: This command requires the PID and SAMPLES to analyse\n\tUsage: "
         "\n\t";
     msg += std::string(argv[0]);
     msg += " -p,--pid PID";
-    msg += " -s,--samples SAMPLES";
-    msg += " -f,--frequency FREQUENCY_HZ";
+    msg += " -s,--samples SAMPLES (default: 100)";
+    msg += " -f,--frequency FREQUENCY_HZ (default: 100 Hz)";
+    msg += " -c [COMMAND]\n\t";
+    msg += " -p and -c are mutually exclusive. -c goes to the end always!";
     EFM_ERROR(msg);
   }
 
@@ -91,19 +179,60 @@ int main(int argc, char **argv) {
   EFM_WARN("RAPL not found.");
 #endif
 
-  // Extracting the PID
-  uint pid = std::stoi(argparser.Exists("-p") ? argparser.GetOption("-p")
-                                              : argparser.GetOption("--pid"));
-  uint timelimit =
-      std::stoi(argparser.Exists("-s") ? argparser.GetOption("-s")
-                                       : argparser.GetOption("--samples"));
+  // ------------ Argument handling ------------
+  if (check_pid) {
+    pid = std::stoi(argparser.Exists("-p") ? argparser.GetOption("-p")
+                                           : argparser.GetOption("--pid"));
+  } else {
+    // Get the arguments from the command
+    auto bit = argparser.GetBegin("-c");
+    auto eit = argparser.GetEnd();
+    const int count = eit - bit;
+    manager_args.resize(count);
+    std::copy(bit, eit, manager_args.begin());
 
-  if (argparser.Exists("-f") || argparser.Exists("--frequency")) {
+    // Launch the thread
+    EFM_INFO("Launching the process");
+    manager_thread =
+        std::thread(launch_command, std::ref(manager), std::cref(manager_args),
+                    std::ref(manager_mutex), std::ref(manager_cv),
+                    std::ref(close), std::ref(terminated));
+    {
+      std::unique_lock lk(manager_mutex);
+      manager_cv.wait_for(lk, std::chrono::seconds(1));
+    }
+    EFM_INFO("Checking the launch");
+
+    // Check if it is open
+    bool running = false;
+    manager_mutex.lock();
+    running = !terminated;
+    pid = manager.GetPID();
+    manager_mutex.unlock();
+    if (!running) {
+      EFM_ERROR(std::string("Cannot run the command: ") + *bit);
+    }
+
+    EFM_INFO("Launched successfully");
+  }
+
+  // Extract the timelimit
+  if (check_samples) {
+    timelimit =
+        std::stoi(argparser.Exists("-s") ? argparser.GetOption("-s")
+                                         : argparser.GetOption("--samples"));
+  }
+
+  // Extract the frequency
+  if (check_frequency) {
     frequency =
         std::stoi(argparser.Exists("-f") ? argparser.GetOption("-f")
                                          : argparser.GetOption("--frequency"));
   }
+
   EFM_INFO(std::string("Analysing PID ") + std::to_string(pid));
+  EFM_INFO(std::string("Frequency: ") + std::to_string(frequency));
+  EFM_INFO(std::string("Samples: ") + std::to_string(timelimit));
 
   // ------------ Configure all tools ------------
 #ifdef ENABLE_IPMI
@@ -111,7 +240,7 @@ int main(int argc, char **argv) {
   IPMIMeterObserver ipmi_meter{};
   auto psu_readings_iface = ipmi_meter.GetReadings()[0];
   PSUReadings *psu_readings = dynamic_cast<PSUReadings *>(psu_readings_iface);
-  EFM_CHECK(ipmi_meter.Trigger());
+  EFM_CRITICAL_CHECK(ipmi_meter.Trigger());
   uint psu_num = psu_readings->psu_max_power.size();
   EFM_INFO("PSUs detected: " + std::to_string(psu_num));
 #endif
@@ -120,7 +249,7 @@ int main(int argc, char **argv) {
   RAPLMeterObserver rapl_meter{};
   auto rapl_readings_iface = rapl_meter.GetReadings()[0];
   CPUReadings *rapl_readings = dynamic_cast<CPUReadings *>(rapl_readings_iface);
-  EFM_CHECK(rapl_meter.Trigger());
+  EFM_CRITICAL_CHECK(rapl_meter.Trigger());
   uint socket_num = rapl_readings->socket_power.size();
   EFM_INFO("Sockets detected: " + std::to_string(socket_num));
 #endif
@@ -136,8 +265,8 @@ int main(int argc, char **argv) {
   auto sys_stat_iface = sys_stat.GetReadings()[0];
   CPUReadings *proc_cpu_usage = dynamic_cast<CPUReadings *>(proc_stat_iface);
   CPUReadings *sys_cpu_usage = dynamic_cast<CPUReadings *>(sys_stat_iface);
-  EFM_CHECK(proc_stat.Trigger());
-  EFM_CHECK(sys_stat.Trigger());
+  EFM_CRITICAL_CHECK(proc_stat.Trigger());
+  EFM_CRITICAL_CHECK(sys_stat.Trigger());
 
   // ------------ Making table header ------------
   EFM_INFO("Readings:");
@@ -185,11 +314,18 @@ int main(int argc, char **argv) {
   // ------------ Perform reads ------------
   bool first = true;
   for (uint t = 0; t < timelimit; ++t) {
-    EFM_CHECK(proc_stat.Trigger());
-    EFM_CHECK(sys_stat.Trigger());
+    std::cout << std::flush;
+    bool finished = false;
+    manager_mutex.lock();
+    finished = terminated;
+    manager_mutex.unlock();
+    if (finished) EFM_WARN_AND_BREAK("Process not running");
+
+    EFM_CHECK(proc_stat.Trigger(), EFM_WARN_AND_BREAK);
+    EFM_CHECK(sys_stat.Trigger(), EFM_WARN_AND_BREAK);
 #ifdef ENABLE_PERF
-    EFM_CHECK(perf_record.Trigger());
-    EFM_CHECK(perf_annotate.Trigger());
+    EFM_CHECK(perf_record.Trigger(), EFM_WARN_AND_BREAK);
+    EFM_CHECK(perf_annotate.Trigger(), EFM_WARN_AND_BREAK);
     auto readings_rec =
         dynamic_cast<RecordReadings *>(perf_record.GetReadings()[0]);
     auto readings_ann =
@@ -198,10 +334,10 @@ int main(int argc, char **argv) {
     sleep(kDelay);
 #endif
 #ifdef ENABLE_RAPL
-    EFM_CHECK(rapl_meter.Trigger());
+    EFM_CHECK(rapl_meter.Trigger(), EFM_WARN_AND_BREAK);
 #endif
 #ifdef ENABLE_IPMI
-    EFM_CHECK(ipmi_meter.Trigger());
+    EFM_CHECK(ipmi_meter.Trigger(), EFM_WARN_AND_BREAK);
 #endif
 
     // Time columns
@@ -293,6 +429,15 @@ int main(int argc, char **argv) {
     EFM_RES << sys_cpu_usage->overall_usage << ",";
     EFM_RES << proc_cpu_usage->overall_usage << ",";
     EFM_RES << difference << std::endl;
+  }
+
+  if (check_cmd) {
+    // Order closure
+    manager_mutex.lock();
+    close = true;
+    manager_mutex.unlock();
+    // Wait until closure
+    manager_thread.join();
   }
 
   return 0;
