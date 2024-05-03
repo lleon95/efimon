@@ -116,9 +116,17 @@ class ProcessManager {
   /**
    * @brief Synchronises the execution and waits until completion
    *
+   * @param quick quick check to see if the process is still running
    * @return Runtime
    */
-  Status Sync();
+  Status Sync(const bool quick = false);
+
+  /**
+   * @brief Checks that the process is running
+   *
+   * @return true if it is running
+   */
+  bool IsRunning();
 
   /**
    * @brief Close the process

@@ -80,18 +80,32 @@ Status ProcessManager::Open(const std::string &cmd,
   return ret;
 }
 
-Status ProcessManager::Sync() {
+Status ProcessManager::Sync(const bool single_line) {
   Status ret{};
+
   if (!this->ip_.is_open()) {
     ret = Status{Status::FILE_ERROR, "Cannot access the process"};
   }
 
   std::string line;
-  while (std::getline(this->ip_, line)) {
+  if (!single_line) {
+    while (std::getline(this->ip_, line)) {
+      if (Mode::SILENT != this->mode_ && this->stream_) {
+        (*stream_) << line << std::endl;
+      } else if (Mode::SILENT != this->mode_) {
+        std::cerr << line << std::endl;
+      }
+    }
+    this->Close();
+  } else {
+    bool ok = static_cast<bool>(std::getline(this->ip_, line));
     if (Mode::SILENT != this->mode_ && this->stream_) {
       (*stream_) << line << std::endl;
     } else if (Mode::SILENT != this->mode_) {
       std::cerr << line << std::endl;
+    }
+    if (!ok) {
+      this->Close();
     }
   }
 
@@ -103,6 +117,11 @@ pid_t ProcessManager::GetPID() { return this->ip_.getpid(); }
 Status ProcessManager::Close() {
   this->ip_.close();
   return Status{};
+}
+
+bool ProcessManager::IsRunning() {
+  this->Sync(true);
+  return this->ip_.is_open();
 }
 
 } /* namespace efimon */
