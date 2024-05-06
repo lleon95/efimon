@@ -21,6 +21,6 @@ executable('efimon-power-analyser',
           ],
           cpp_args : cpp_args,
           include_directories : [project_inc],
-          dependencies: [libefimon_dep],
+          dependencies: [libefimon_dep, dependency('threads')],
           install : true,
 )
