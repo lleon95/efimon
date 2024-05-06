@@ -10,6 +10,7 @@
 #define INCLUDE_EFIMON_PROC_CPUINFO_HPP_
 
 #include <efimon/status.hpp>
+#include <tuple>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -30,8 +31,10 @@ class CPUInfo {
    *
    * The first attribute is the logical id and the second is the physical core
    * in case of SMT enabled.
+   *
+   * The third is the clock speed
    */
-  typedef std::pair<int, int> CPUPair;
+  typedef std::tuple<int, int, float> CPUPair;
 
   /**
    * @brief Defines the vector of tuples for the CPU pair
@@ -76,11 +79,32 @@ class CPUInfo {
   int GetNumSockets() { return num_sockets_; }
 
   /**
+   * @brief Get the mean frequency along sockets
+   *
+   * @return float mean frequency
+   */
+  float GetMeanFrequency();
+
+  /**
+   * @brief Get the mean frequency per socket
+   *
+   * @return std::vector<float> mean frequency
+   */
+  std::vector<float> GetSocketMeanFrequency();
+
+  /**
    * @brief Get the Assignation map
    *
    * @return const CPUAssignment&
    */
   const CPUAssignment &GetAssignation() { return topology_; }
+
+  /**
+   * @brief Refreshes the map with the current frequencies
+   *
+   * @return Status always OK
+   */
+  Status Refresh();
 
   /**
    * @brief Destroy the CPUInfo object
@@ -103,8 +127,27 @@ class CPUInfo {
    * @param logical_id logical core id
    * @param socket_id socket id
    * @param core_id core id
+   * @param clock_speed clock speed in MHz
    */
-  void InsertMap(const int logical_id, const int socket_id, const int core_id);
+  void InsertMap(const int logical_id, const int socket_id, const int core_id,
+                 const float clock_speed);
+
+  /**
+   * @brief Updates the frequency in the map
+   *
+   * @param logical_id logical core id
+   * @param socket_id socket id
+   * @param clock_speed clock speed in MHz
+   */
+  void UpdateMap(const int logical_id, const int socket_id,
+                 const float clock_speed);
+
+  /**
+   * @brief Reads the file and parses the map
+   *
+   * @param refresh for refreshing the frequency values
+   */
+  void ParseMap(const bool refresh = true);
 };
 
 } /* namespace efimon */
