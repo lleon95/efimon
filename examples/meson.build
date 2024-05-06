@@ -94,3 +94,13 @@ executable('process-manager-threaded',
           dependencies: [libefimon_dep, dependency('threads')],
           install : false,
 )
+
+executable('frequency-query',
+          [
+            files('frequency-query.cpp')
+          ],
+          cpp_args : cpp_args,
+          include_directories : [project_inc],
+          dependencies: [libefimon_dep],
+          install : false,
+)
