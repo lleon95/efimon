@@ -181,7 +181,8 @@ Status IPMIMeterObserver::GetFanSpeed() {
   }
 
   /* Clean the vector */
-  this->fan_readings_.clear();
+  this->fan_readings_.fan_speeds.clear();
+  float speed = 0.f;
 
   std::string payload;
   while (std::getline(ip, payload)) {
@@ -204,8 +205,12 @@ Status IPMIMeterObserver::GetFanSpeed() {
     substpayload = substpayload.substr(0, idx_bar - 1);
 
     float val = std::stof(substpayload);
-    this->fan_readings_.emplace_back(val);
+    speed += val;
+    this->fan_readings_.fan_speeds.emplace_back(val);
   }
+
+  this->fan_readings_.overall_speed =
+      speed / this->fan_readings_.fan_speeds.size();
 
   return ret;
 }
@@ -273,7 +278,7 @@ Status IPMIMeterObserver::Reset() {
   this->readings_.psu_energy.resize(this->num_psus_, 0.f);
   this->readings_.psu_max_power = this->max_power_;
   this->fan_readings_.overall_speed = 0.f;
-  this->fan_readings_.clear();
+  this->fan_readings_.fan_speeds.clear();
   return Status{};
 }
 
