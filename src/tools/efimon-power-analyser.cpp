@@ -240,10 +240,17 @@ int main(int argc, char **argv) {
   EFM_INFO("Configuring IPMI");
   IPMIMeterObserver ipmi_meter{};
   auto psu_readings_iface = ipmi_meter.GetReadings()[0];
+  auto fan_readings_iface = ipmi_meter.GetReadings()[1];
   PSUReadings *psu_readings = dynamic_cast<PSUReadings *>(psu_readings_iface);
+  FanReadings *fan_readings = dynamic_cast<FanReadings *>(fan_readings_iface);
   EFM_CRITICAL_CHECK(ipmi_meter.Trigger());
   uint psu_num = psu_readings->psu_max_power.size();
+  uint fan_num = fan_readings->fan_speeds.size();
   EFM_INFO("PSUs detected: " + std::to_string(psu_num));
+  EFM_INFO("Fans detected: " + std::to_string(fan_num));
+#ifndef ENABLE_IPMI_SENSORS
+  EFM_WARN("IPMI Sensors not found. Skipping fan measurements");
+#endif
 #endif
 #ifdef ENABLE_RAPL
   EFM_INFO("Configuring RAPL");
@@ -306,6 +313,9 @@ int main(int argc, char **argv) {
 #ifdef ENABLE_IPMI
   for (uint i = 0; i < psu_num; ++i) {
     EFM_RES << "PSUPower" << i << ",";
+  }
+  for (uint i = 0; i < fan_num; ++i) {
+    EFM_RES << "FanSpeed" << i << ",";
   }
 #endif
   for (int i = 0; i < cpuinfo.GetNumSockets(); ++i) {
@@ -430,6 +440,9 @@ int main(int argc, char **argv) {
 #ifdef ENABLE_IPMI
     for (uint i = 0; i < psu_num; ++i) {
       EFM_RES << psu_readings->psu_power.at(i) << ",";
+    }
+    for (uint i = 0; i < fan_num; ++i) {
+      EFM_RES << fan_readings->fan_speeds.at(i) << ",";
     }
 #endif
     for (const float freq : cpuinfo.GetSocketMeanFrequency()) {
