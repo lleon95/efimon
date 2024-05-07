@@ -105,10 +105,12 @@ Status IPMIMeterObserver::Trigger() {
   this->readings_.overall_power = 0;
 
   /* Get fan speed */
+#ifndef ENABLE_IPMI_SENSORS
   st = this->GetFanSpeed();
   if (st.code != Status::OK) {
     return st;
   }
+#endif /* ENABLE_IPMI_SENSORS */
 
   /* Check if the parse is for a single PSU */
   if (this->psu_id_ < this->num_psus_) {
