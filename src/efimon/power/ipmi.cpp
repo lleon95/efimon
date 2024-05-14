@@ -105,7 +105,7 @@ Status IPMIMeterObserver::Trigger() {
   this->readings_.overall_power = 0;
 
   /* Get fan speed */
-#ifndef ENABLE_IPMI_SENSORS
+#ifdef ENABLE_IPMI_SENSORS
   st = this->GetFanSpeed();
   if (st.code != Status::OK) {
     return st;
@@ -190,7 +190,7 @@ Status IPMIMeterObserver::GetFanSpeed() {
 
     /* Find the RPM keyword */
     idx_rpm = payload.find("RPM");
-    if (std::string::npos != idx_rpm) {
+    if (std::string::npos == idx_rpm) {
       continue;
     }
 
