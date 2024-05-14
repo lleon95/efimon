@@ -12,6 +12,7 @@ lib_iface_headers = [
   files('observer.hpp'),
   files('observer-enums.hpp'),
   files('proc-lister.hpp'),
+  files('process-manager.hpp'),
   files('readings.hpp'),
   files('status.hpp'),
 ]
