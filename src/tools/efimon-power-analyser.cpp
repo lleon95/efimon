@@ -23,6 +23,8 @@
 
 #include <unistd.h>
 
+#include <array>
+#include <condition_variable>  // NOLINT
 #include <efimon/arg-parser.hpp>
 #include <efimon/asm-classifier.hpp>
 #include <efimon/perf/annotate.hpp>
@@ -32,13 +34,10 @@
 #include <efimon/proc/cpuinfo.hpp>
 #include <efimon/proc/stat.hpp>
 #include <efimon/process-manager.hpp>
-
-#include <third-party/pstream.hpp>
-
-#include <condition_variable>  // NOLINT
 #include <iostream>
 #include <mutex>  // NOLINT
 #include <string>
+#include <third-party/pstream.hpp>
 #include <thread>  // NOLINT
 
 #define EFM_INFO(msg) \
