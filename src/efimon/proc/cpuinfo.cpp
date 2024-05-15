@@ -6,10 +6,10 @@
  * @copyright Copyright (c) 2024. See License for Licensing
  */
 
-#include <efimon/proc/cpuinfo.hpp>
-
 #include <algorithm>
+#include <efimon/proc/cpuinfo.hpp>
 #include <fstream>
+#include <mutex>  // NOLINT
 #include <sstream>
 #include <string>
 #include <tuple>
@@ -17,6 +17,7 @@
 namespace efimon {
 
 static constexpr char kCpuInfoFile[] = "/proc/cpuinfo";
+static std::mutex m_single_cpuinfo;
 
 CPUInfo::CPUInfo()
     : num_logical_cores_{0},
@@ -24,7 +25,7 @@ CPUInfo::CPUInfo()
       num_sockets_{0},
       topology_{} {
   /* Parses the map and constructs it */
-  ParseMap(false);
+  ParseMap();
 
   /* Comparison predicate: order by logical core according to the
      efimon::CPUPair definition */
@@ -48,14 +49,12 @@ void CPUInfo::InsertMap(const int logical_id, const int socket_id,
   topology_[socket_id].push_back({logical_id, core_id, clock_speed});
 }
 
-void CPUInfo::UpdateMap(const int logical_id, const int socket_id,
-                        const float clock_speed) {
-  auto tuple = topology_[socket_id][logical_id];
-  std::get<2>(tuple) = clock_speed;
-  topology_[socket_id][logical_id] = tuple;
+const CPUInfo::CPUAssignment& CPUInfo::GetAssignation() {
+  std::scoped_lock lock(m_single_cpuinfo);
+  return topology_;
 }
 
-void CPUInfo::ParseMap(const bool refresh) {
+void CPUInfo::ParseMap() {
   std::ifstream proc_cpu_info_file;
   proc_cpu_info_file.open(kCpuInfoFile);
 
@@ -67,6 +66,7 @@ void CPUInfo::ParseMap(const bool refresh) {
   float clock_mhz = 0;
 
   while (std::getline(proc_cpu_info_file, line)) {
+    std::scoped_lock lock(m_single_cpuinfo);
     std::string::size_type idx_proc, idx_phys, idx_coreid, idx_clock, idx_colon;
     /* Find the processor keyword */
     idx_proc = line.find("processor");
@@ -101,10 +101,7 @@ void CPUInfo::ParseMap(const bool refresh) {
         core_id = std::stoi(line.substr(idx_colon + 2));
         num_physical_cores_ = std::max(num_physical_cores_, core_id + 1);
         /* Flush */
-        if (!refresh)
-          InsertMap(logical_id, socket_id, core_id, clock_mhz);
-        else
-          UpdateMap(logical_id, socket_id, clock_mhz);
+        InsertMap(logical_id, socket_id, core_id, clock_mhz);
         break;
       default:
         break;
@@ -113,6 +110,7 @@ void CPUInfo::ParseMap(const bool refresh) {
 }
 
 Status CPUInfo::Refresh() {
+  topology_.clear();
   ParseMap();
   return Status{};
 }
