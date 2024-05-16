@@ -453,13 +453,17 @@ int main(int argc, char **argv) {
   }
 
   if (check_cmd) {
+    EFM_INFO("Sending termination signal");
     // Order closure
     manager_mutex.lock();
     close = true;
     manager_mutex.unlock();
+    kill(pid, SIGINT);
     // Wait until closure
     manager_thread.join();
   }
+
+  EFM_INFO("Finished...");
 
   return 0;
 }
