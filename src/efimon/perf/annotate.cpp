@@ -102,6 +102,7 @@ Status PerfAnnotateObserver::ParseResults() {
     /* Intermediate */
     std::stringstream sloc;
     std::string drop;
+    std::string operands;
 
     sloc << line;
     sloc >> percent;
@@ -114,6 +115,14 @@ Status PerfAnnotateObserver::ParseResults() {
     sloc >> drop; /* Get rid of ':' */
     sloc >> drop; /* Get rid of 'address' */
     sloc >> assembly;
+    sloc >> operands;
+
+    /* Classify */
+    if (!this->classifier_) continue;
+    std::string optypes = this->classifier_->OperandTypes(operands);
+    InstructionPair classification =
+        this->classifier_->Classify(assembly, optypes);
+    assembly += std::string("_") + optypes;
 
     /* Add to the histogram */
     if (this->readings_.histogram.find(assembly) ==
@@ -123,20 +132,30 @@ Status PerfAnnotateObserver::ParseResults() {
       this->readings_.histogram[assembly] += percent;
     }
 
-    /* Classify */
-    if (!this->classifier_) continue;
-    InstructionPair classification = this->classifier_->Classify(assembly);
-    if (this->readings_.classification[classification.first].find(
-            classification.second) ==
-        this->readings_.classification[classification.first].end()) {
-      this->readings_
-          .classification[classification.first][classification.second] =
-          percent;
-    } else {
-      this->readings_
-          .classification[classification.first][classification.second] +=
-          percent;
+    /* Handle the creation of the maps */
+    bool family_found =
+        this->readings_.classification[std::get<0>(classification)].find(
+            std::get<1>(classification)) !=
+        this->readings_.classification[std::get<0>(classification)].end();
+    if (!family_found) {
+      this->readings_.classification[std::get<0>(classification)]
+                                    [std::get<1>(classification)] = {};
     }
+    bool origin_found = this->readings_
+                            .classification[std::get<0>(classification)]
+                                           [std::get<1>(classification)]
+                            .find(std::get<2>(classification)) !=
+                        this->readings_
+                            .classification[std::get<0>(classification)]
+                                           [std::get<1>(classification)]
+                            .end();
+    if (!origin_found) {
+      this->readings_.classification[std::get<0>(classification)][std::get<1>(
+          classification)][std::get<2>(classification)] = 0.f;
+    }
+
+    this->readings_.classification[std::get<0>(classification)][std::get<1>(
+        classification)][std::get<2>(classification)] += percent;
   }
 
   this->valid_ = true;

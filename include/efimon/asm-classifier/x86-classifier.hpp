@@ -23,8 +23,22 @@ class x86Classifier : public AsmClassifier {
   /**
    * Classifies the instruction from string to InstructionType and
    * InstructionFamily
+   *
+   * @param inst instruction
+   * @param operands operands types
+   * @return InstructionPair
    */
-  InstructionPair Classify(const std::string &inst) const noexcept override;
+  InstructionPair Classify(const std::string &inst,
+                           const std::string &operands) const noexcept override;
+
+  /**
+   * Determines if the operands belong to memory, immediate or register values
+   *
+   * @param operands as it comes from objdump
+   * @return string with r, i or m symbolising the type of operands
+   */
+  const std::string OperandTypes(const std::string &operands) const
+      noexcept override;
 
   /**
    * Default destructor for inheritance (implementation)

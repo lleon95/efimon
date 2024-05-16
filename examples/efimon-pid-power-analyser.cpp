@@ -142,16 +142,25 @@ int main(int argc, char **argv) {
 #endif
 #ifdef ENABLE_PERF
   for (uint itype = 0;
-       itype < static_cast<uint>(assembly::InstructionType::UNCLASSIFIED);
+       itype <= static_cast<uint>(assembly::InstructionType::UNCLASSIFIED);
        ++itype) {
+    auto type = static_cast<assembly::InstructionType>(itype);
+    std::string stype = AsmClassifier::TypeString(type);
     for (uint ftype = 0;
          ftype < static_cast<uint>(assembly::InstructionFamily::OTHER);
          ++ftype) {
-      auto type = static_cast<assembly::InstructionType>(itype);
       auto family = static_cast<assembly::InstructionFamily>(ftype);
-      std::string stype = AsmClassifier::TypeString(type);
       std::string sfamily = AsmClassifier::FamilyString(family);
-      EFM_RES << "Probability" << stype << sfamily << ",";
+      if (family == assembly::InstructionFamily::MEMORY ||
+          family == assembly::InstructionFamily::ARITHMETIC ||
+          family == assembly::InstructionFamily::LOGIC) {
+        EFM_RES << "ProbabilityRegister" << stype << sfamily << ",";
+        EFM_RES << "ProbabilityMemLoad" << stype << sfamily << ",";
+        EFM_RES << "ProbabilityMemStore" << stype << sfamily << ",";
+        EFM_RES << "ProbabilityMemUpdate" << stype << sfamily << ",";
+      } else {
+        EFM_RES << "Probability" << stype << sfamily << ",";
+      }
     }
   }
 #endif
@@ -210,24 +219,59 @@ int main(int argc, char **argv) {
 
 #ifdef ENABLE_PERF
     for (uint itype = 0;
-         itype < static_cast<uint>(assembly::InstructionType::UNCLASSIFIED);
+         itype <= static_cast<uint>(assembly::InstructionType::UNCLASSIFIED);
          ++itype) {
       for (uint ftype = 0;
            ftype < static_cast<uint>(assembly::InstructionFamily::OTHER);
            ++ftype) {
         auto type = static_cast<assembly::InstructionType>(itype);
         auto family = static_cast<assembly::InstructionFamily>(ftype);
+
         auto tit = readings_ann->classification.find(type);
-        if (readings_ann->classification.end() == tit) {
-          EFM_RES << 0.f << ",";
-          continue;
+
+        if (family == assembly::InstructionFamily::MEMORY ||
+            family == assembly::InstructionFamily::ARITHMETIC ||
+            family == assembly::InstructionFamily::LOGIC) {
+          std::array<float, 4> probs;
+          probs.fill(0.f);
+
+          if (readings_ann->classification.end() != tit) {
+            auto fit = tit->second.find(family);
+            if (tit->second.end() != fit) {
+              for (auto origit = fit->second.begin();
+                   origit != fit->second.end(); origit++) {
+                auto pairorigin =
+                    AsmClassifier::OriginDecomposed(origit->first);
+                if (pairorigin.first == assembly::DataOrigin::MEMORY &&
+                    pairorigin.second == assembly::DataOrigin::MEMORY) {
+                  probs[3] += origit->second;
+                } else if (pairorigin.first == assembly::DataOrigin::MEMORY) {
+                  probs[1] += origit->second;
+                } else if (pairorigin.second == assembly::DataOrigin::MEMORY) {
+                  probs[2] += origit->second;
+                } else {
+                  probs[0] += origit->second;
+                }
+              }
+            }
+          }
+
+          for (const auto prob : probs) {
+            EFM_RES << prob << ",";
+          }
+        } else {
+          float probres = 0.f;
+          if (readings_ann->classification.end() != tit) {
+            auto fit = tit->second.find(family);
+            if (tit->second.end() != fit) {
+              for (auto origit = fit->second.begin();
+                   origit != fit->second.end(); origit++) {
+                probres += origit->second;
+              }
+            }
+          }
+          EFM_RES << probres << ",";
         }
-        auto fit = tit->second.find(family);
-        if (tit->second.end() == fit) {
-          EFM_RES << 0.f << ",";
-          continue;
-        }
-        EFM_RES << fit->second << ",";
       }
     }
 #endif
