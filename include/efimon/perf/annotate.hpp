@@ -166,8 +166,6 @@ class PerfAnnotateObserver : public Observer {
   std::string command_prefix_;
   /** Command suffix to execute the annotation */
   std::string command_suffix_;
-  /** File where the annotation happens */
-  std::filesystem::path annotation_;
   /** Classifier to construct the proper histograms */
   std::unique_ptr<AsmClassifier> classifier_;
 

@@ -50,14 +50,11 @@ PerfAnnotateObserver::PerfAnnotateObserver(PerfRecordObserver& record)
 }
 
 void PerfAnnotateObserver::ReconstructPath() {
-  const std::string filename = "annotation.txt";
   std::filesystem::path tmp_folder = this->record_.tmp_folder_path_;
-  this->annotation_ = tmp_folder / filename;
   this->command_prefix_ = std::string("cd ") + std::string(tmp_folder);
   this->command_prefix_ +=
       " && perf annotate -q --percent-type global-period -i ";
   this->command_suffix_ = " | sort -r -k2,1n";
-  // this->command_suffix_ += " > " + filename;
 }
 
 Status PerfAnnotateObserver::Trigger() {
