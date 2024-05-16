@@ -58,7 +58,7 @@ class ProcessManager {
    * @param cmd command to launch
    * @param mode mode of the console
    * @param stream printing stream (defaults to none, which means that
-   * everything is redirected to the respective output unless SILENT mode is
+   * everything is redirected to the standard output unless SILENT mode is
    * specified)
    */
   explicit ProcessManager(const std::string &cmd, const Mode mode = BOTH,
@@ -72,7 +72,7 @@ class ProcessManager {
    * @param args arguments to attach
    * @param mode mode of the console
    * @param stream printing stream (defaults to none, which means that
-   * everything is redirected to the respective output unless SILENT mode is
+   * everything is redirected to the standard output unless SILENT mode is
    * specified)
    */
   ProcessManager(const std::string &cmd, const std::vector<std::string> &args,
@@ -86,7 +86,7 @@ class ProcessManager {
    * @param cmd command to launch
    * @param mode mode of the console
    * @param stream printing stream (defaults to none, which means that
-   * everything is redirected to the respective output unless SILENT mode is
+   * everything is redirected to the standard output unless SILENT mode is
    * specified)
    */
   Status Open(const std::string &cmd, const Mode mode = BOTH,
