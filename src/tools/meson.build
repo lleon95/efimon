@@ -5,14 +5,22 @@
 # Author: Luis G. Leon Vega <luis.leon@ieee.org>
 #
 
-efimon_meter_sources = [
-  files('efimon-meter.cpp')
-]
-
 executable('efimon-meter',
-           efimon_meter_sources,
+           [
+             files('efimon-meter.cpp')
+           ],
            cpp_args : cpp_args,
            include_directories : [project_inc],
            dependencies: [libefimon_dep],
            install : true,
+)
+
+executable('efimon-power-analyser',
+          [
+            files('efimon-power-analyser.cpp')
+          ],
+          cpp_args : cpp_args,
+          include_directories : [project_inc],
+          dependencies: [libefimon_dep, dependency('threads')],
+          install : true,
 )

@@ -75,12 +75,22 @@ if enable_pcm
   )
 endif
 
-executable('efimon-pid-power-analyser',
+executable('process-manager',
           [
-            files('efimon-pid-power-analyser.cpp')
+            files('process-manager.cpp')
           ],
           cpp_args : cpp_args,
           include_directories : [project_inc],
           dependencies: [libefimon_dep],
+          install : false,
+)
+
+executable('process-manager-threaded',
+          [
+            files('process-manager-threaded.cpp')
+          ],
+          cpp_args : cpp_args,
+          include_directories : [project_inc],
+          dependencies: [libefimon_dep, dependency('threads')],
           install : false,
 )

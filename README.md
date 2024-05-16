@@ -107,7 +107,15 @@ Currently, we have been focused on an analyser for measuring the power consumpti
 ```bash
 PID=2000 # Process ID
 STIME=10 # Metering during 10 seconds
-sudo efimon-pid-power-analyser -p ${PID} -s ${STIME} > consumption.csv
+sudo efimon-power-analyser -p ${PID} -s ${STIME} > consumption.csv
+```
+
+Another way to execute it:
+
+```bash
+STIME=10 # Metering during 10 seconds
+# the command is time sleep 1
+sudo efimon-power-analyser -s ${STIME} -c time sleep 1
 ```
 
 ## Platforms
