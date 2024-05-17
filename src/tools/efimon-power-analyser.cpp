@@ -29,6 +29,7 @@
 #include <efimon/perf/record.hpp>
 #include <efimon/power/ipmi.hpp>
 #include <efimon/power/rapl.hpp>
+#include <efimon/proc/cpuinfo.hpp>
 #include <efimon/proc/stat.hpp>
 #include <efimon/process-manager.hpp>
 
@@ -267,6 +268,7 @@ int main(int argc, char **argv) {
   CPUReadings *sys_cpu_usage = dynamic_cast<CPUReadings *>(sys_stat_iface);
   EFM_CRITICAL_CHECK(proc_stat.Trigger());
   EFM_CRITICAL_CHECK(sys_stat.Trigger());
+  CPUInfo cpuinfo{};
 
   // ------------ Making table header ------------
   EFM_INFO("Readings:");
@@ -306,6 +308,9 @@ int main(int argc, char **argv) {
     EFM_RES << "PSUPower" << i << ",";
   }
 #endif
+  for (int i = 0; i < cpuinfo.GetNumSockets(); ++i) {
+    EFM_RES << "SocketFreq" << i << ",";
+  }
   EFM_RES << "SystemCpuUsage"
           << ",";
   EFM_RES << "ProcessCpuUsage"
@@ -323,6 +328,7 @@ int main(int argc, char **argv) {
 
     EFM_CHECK(proc_stat.Trigger(), EFM_WARN_AND_BREAK);
     EFM_CHECK(sys_stat.Trigger(), EFM_WARN_AND_BREAK);
+    EFM_CHECK(cpuinfo.Refresh(), EFM_WARN_AND_BREAK);
 #ifdef ENABLE_PERF
     EFM_CHECK(perf_record.Trigger(), EFM_WARN_AND_BREAK);
     EFM_CHECK(perf_annotate.Trigger(), EFM_WARN_AND_BREAK);
@@ -426,6 +432,9 @@ int main(int argc, char **argv) {
       EFM_RES << psu_readings->psu_power.at(i) << ",";
     }
 #endif
+    for (const float freq : cpuinfo.GetSocketMeanFrequency()) {
+      EFM_RES << freq << ",";
+    }
     EFM_RES << sys_cpu_usage->overall_usage << ",";
     EFM_RES << proc_cpu_usage->overall_usage << ",";
     EFM_RES << difference << std::endl;
