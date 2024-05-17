@@ -34,6 +34,7 @@ class CSVLogger : public Logger {
   std::string filename_;
   std::unordered_map<std::string, FieldType> table_map_;
   std::ofstream csv_file_;
+  uint64_t last_id_;
 
   std::string Stringify(const std::shared_ptr<Logger::IValue> val);
 };
