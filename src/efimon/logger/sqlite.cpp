@@ -48,7 +48,7 @@ std::string SQLiteLogger::Stringify(const std::shared_ptr<Logger::IValue> val) {
   return std::string{};
 }
 
-Status SQLiteLogger::InsertColumn(
+Status SQLiteLogger::InsertRow(
     const std::unordered_map<std::string, std::shared_ptr<IValue>> &vals) {
   std::string sql = std::string("INSERT INTO ") + this->tablename_;
   std::string fields = "";

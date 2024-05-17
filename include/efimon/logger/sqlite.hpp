@@ -26,7 +26,7 @@ class SQLiteLogger : public Logger {
   SQLiteLogger(const std::string &filename, const std::string &session,
                const std::vector<MapTuple> &fields);
 
-  Status InsertColumn(
+  Status InsertRow(
       const std::unordered_map<std::string, std::shared_ptr<Logger::IValue>>
           &vals) override;
 
