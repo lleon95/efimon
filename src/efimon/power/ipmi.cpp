@@ -25,6 +25,7 @@ static constexpr int kMaxPSU = 100;
 static constexpr char kIPMIInfoCmd[] = "ipmi-oem dell power-supply-info";
 static constexpr char kIPMIPwrCmd[] =
     "ipmi-oem dell get-instantaneous-power-consumption-data";
+static constexpr char kIPMISensorCmd[] = "ipmi-sensors | grep Fan";
 
 IPMIMeterObserver::IPMIMeterObserver(const uint /* pid */,
                                      const ObserverScope scope,
@@ -103,6 +104,14 @@ Status IPMIMeterObserver::Trigger() {
   this->readings_.timestamp = time;
   this->readings_.overall_power = 0;
 
+  /* Get fan speed */
+#ifdef ENABLE_IPMI_SENSORS
+  st = this->GetFanSpeed();
+  if (st.code != Status::OK) {
+    return st;
+  }
+#endif /* ENABLE_IPMI_SENSORS */
+
   /* Check if the parse is for a single PSU */
   if (this->psu_id_ < this->num_psus_) {
     st = this->GetPower(this->psu_id_);
@@ -160,6 +169,52 @@ Status IPMIMeterObserver::GetPower(const uint psu_id) {
   return Status{};
 }
 
+Status IPMIMeterObserver::GetFanSpeed() {
+  Status ret{};
+
+  /* Execute the command */
+  redi::ipstream ip(kIPMISensorCmd, redi::pstreambuf::pstdout);
+
+  /* Parse the output */
+  if (!ip.is_open()) {
+    return Status{Status::NOT_FOUND, "The IPMI sensor cannot be opened"};
+  }
+
+  /* Clean the vector */
+  this->fan_readings_.fan_speeds.clear();
+  float speed = 0.f;
+
+  std::string payload;
+  while (std::getline(ip, payload)) {
+    std::string::size_type idx_bar = 0, idx_rpm;
+
+    /* Find the RPM keyword */
+    idx_rpm = payload.find("RPM");
+    if (std::string::npos == idx_rpm) {
+      continue;
+    }
+
+    /* Find the third bar */
+    std::string substpayload = payload;
+    for (int i = 0; i < 3; ++i) {
+      idx_bar = substpayload.find("|");
+      substpayload = substpayload.substr(idx_bar + 1);
+    }
+    /* Find the fourth relative to the substring */
+    idx_bar = substpayload.find("|");
+    substpayload = substpayload.substr(0, idx_bar - 1);
+
+    float val = std::stof(substpayload);
+    speed += val;
+    this->fan_readings_.fan_speeds.emplace_back(val);
+  }
+
+  this->fan_readings_.overall_speed =
+      speed / this->fan_readings_.fan_speeds.size();
+
+  return ret;
+}
+
 void IPMIMeterObserver::ParseResults(const uint psu_id) {
   if (!this->valid_) return;
   float energy =
@@ -169,7 +224,8 @@ void IPMIMeterObserver::ParseResults(const uint psu_id) {
 }
 
 std::vector<Readings*> IPMIMeterObserver::GetReadings() {
-  return std::vector<Readings*>{static_cast<Readings*>(&(this->readings_))};
+  return std::vector<Readings*>{static_cast<Readings*>(&(this->readings_)),
+                                static_cast<Readings*>(&(this->fan_readings_))};
 }
 
 Status IPMIMeterObserver::SelectDevice(const uint device) {
@@ -221,6 +277,8 @@ Status IPMIMeterObserver::Reset() {
   this->readings_.psu_power.resize(this->num_psus_, 0.f);
   this->readings_.psu_energy.resize(this->num_psus_, 0.f);
   this->readings_.psu_max_power = this->max_power_;
+  this->fan_readings_.overall_speed = 0.f;
+  this->fan_readings_.fan_speeds.clear();
   return Status{};
 }
 

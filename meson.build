@@ -59,6 +59,7 @@ endif
 
 # Verify if IPMI OEM is installed
 enable_ipmi = false
+enable_ipmi_sensors = false
 ipmi_oem_executable = find_program('ipmi-oem', required: false, native: true)
 if ipmi_oem_executable.found() and get_option('enable-ipmi')
   enable_ipmi = true
@@ -66,6 +67,14 @@ if ipmi_oem_executable.found() and get_option('enable-ipmi')
   message('IPMI found')
 else
   message('IPMI not found. Disabling code related to IPMI')
+endif
+ipmi_sensors_executable = find_program('ipmi-sensors', required: false, native: true)
+if ipmi_sensors_executable.found() and get_option('enable-ipmi')
+  enable_ipmi_sensors = true
+  cpp_args += ['-DENABLE_IPMI_SENSORS']
+  message('IPMI Sensors found')
+else
+  message('IPMI not found. Disabling code related to IPMI Sensors')
 endif
 
 # Add Intel PCM

@@ -45,7 +45,7 @@ if enable_sql
   ]
 endif
 
-if enable_ipmi
+if enable_ipmi and enable_ipmi_sensors
   lib_efimon_sources += [
     files('power/ipmi.cpp'),
   ]

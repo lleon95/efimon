@@ -12,6 +12,7 @@
 
 #include <efimon/observer.hpp>
 #include <efimon/readings.hpp>
+#include <efimon/readings/fan-readings.hpp>
 #include <efimon/readings/psu-readings.hpp>
 #include <vector>
 
@@ -19,7 +20,7 @@ namespace efimon {
 
 /**
  * @brief Observer class that wraps the IPMI interface and gets the
- * energy in a granular and general overview.
+ * energy and fan speed in a granular and general overview.
  *
  */
 class IPMIMeterObserver : public Observer {
@@ -53,6 +54,7 @@ class IPMIMeterObserver : public Observer {
    * In this case, the Readings* can be dynamic-casted to:
    *
    * - PSUReadings. PSU power consumption
+   * - FanReadings. Fan speed readings
    *
    * More to be defined during the way
    */
@@ -63,7 +65,9 @@ class IPMIMeterObserver : public Observer {
    *
    * It corresponds to the PSU id. If not invoked, it takes into account
    * all PSUs. If the number exceeds the indexation of the PSUs,
-   * it takes all
+   * it takes all.
+   *
+   * It is not possible to select a fan.
    *
    * @param device device enumeration
    * @return Status of the transaction
@@ -105,8 +109,8 @@ class IPMIMeterObserver : public Observer {
    *
    * @return vector of capabilities
    */
-  const std::vector<ObserverCapabilities>& GetCapabilities()
-      const noexcept override;
+  const std::vector<ObserverCapabilities>& GetCapabilities() const
+      noexcept override;
 
   /**
    * @brief Get the Status of the Observer
@@ -159,6 +163,8 @@ class IPMIMeterObserver : public Observer {
   std::vector<float> max_power_;
   /** Readings from PSU */
   PSUReadings readings_;
+  /** Readings from Fan speed*/
+  FanReadings fan_readings_;
 
   /**
    * @brief Parse the results
@@ -178,6 +184,11 @@ class IPMIMeterObserver : public Observer {
    * @param psu_id PSU identifier
    */
   Status GetPower(const uint psu_id);
+
+  /**
+   * @brief Gets the fan speed from IPMI
+   */
+  Status GetFanSpeed();
 };
 
 } /* namespace efimon */
