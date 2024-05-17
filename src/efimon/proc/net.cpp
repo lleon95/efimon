@@ -6,18 +6,17 @@
  * @copyright Copyright (c) 2023. See License for Licensing
  */
 
-#include <efimon/proc/net.hpp>
-#include <efimon/status.hpp>
-
 #include <unistd.h>
 
 #include <cstring>
+#include <efimon/proc/net.hpp>
+#include <efimon/status.hpp>
 #include <fstream>
+#include <mutex>  // NOLINT
 #include <sstream>
 #include <string>
 #include <vector>
-
-#include <iostream>
+extern std::mutex m_single_uptime;
 
 #define MAX_LEN_FILE_PATH 255
 
@@ -102,6 +101,7 @@ Status ProcNetObserver::Reset() {
 }
 
 uint64_t ProcNetObserver::GetUptime() {
+  std::scoped_lock lock(m_single_uptime);
   float uptime = 0.f;
   float uptime_idle = 0.f;
   FILE *proc_uptime_file = fopen("/proc/uptime", "r");
@@ -188,8 +188,8 @@ void ProcNetObserver::GetProcNetDev() {
   }
 }
 
-const std::vector<std::string> &ProcNetObserver::GetDeviceNames() const
-    noexcept {
+const std::vector<std::string> &ProcNetObserver::GetDeviceNames()
+    const noexcept {
   return this->device_names_;
 }
 

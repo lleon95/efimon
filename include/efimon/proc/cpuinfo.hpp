@@ -97,7 +97,7 @@ class CPUInfo {
    *
    * @return const CPUAssignment&
    */
-  const CPUAssignment &GetAssignation() { return topology_; }
+  const CPUAssignment &GetAssignation();
 
   /**
    * @brief Refreshes the map with the current frequencies
@@ -133,21 +133,9 @@ class CPUInfo {
                  const float clock_speed);
 
   /**
-   * @brief Updates the frequency in the map
-   *
-   * @param logical_id logical core id
-   * @param socket_id socket id
-   * @param clock_speed clock speed in MHz
-   */
-  void UpdateMap(const int logical_id, const int socket_id,
-                 const float clock_speed);
-
-  /**
    * @brief Reads the file and parses the map
-   *
-   * @param refresh for refreshing the frequency values
    */
-  void ParseMap(const bool refresh = true);
+  void ParseMap();
 };
 
 } /* namespace efimon */

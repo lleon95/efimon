@@ -6,8 +6,6 @@
  * @copyright Copyright (c) 2023. See License for Licensing
  */
 
-#include <efimon/proc/io.hpp>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,8 +13,11 @@
 
 #include <algorithm>
 #include <cstring>
+#include <efimon/proc/io.hpp>
+#include <mutex>  // NOLINT
 #include <numeric>
 #include <vector>
+extern std::mutex m_single_uptime;
 
 #define MAX_LEN_FILE_PATH 255
 
@@ -82,8 +83,8 @@ ObserverScope ProcIOObserver::GetScope() const noexcept {
 
 uint ProcIOObserver::GetPID() const noexcept { return this->pid_; }
 
-const std::vector<ObserverCapabilities> &ProcIOObserver::GetCapabilities() const
-    noexcept {
+const std::vector<ObserverCapabilities> &ProcIOObserver::GetCapabilities()
+    const noexcept {
   return this->caps_;
 }
 
@@ -113,6 +114,7 @@ Status ProcIOObserver::Reset() {
 }
 
 uint64_t ProcIOObserver::GetUptime() {
+  std::scoped_lock lock(m_single_uptime);
   float uptime = 0.f;
   FILE *proc_uptime_file = fopen("/proc/uptime", "r");
 
