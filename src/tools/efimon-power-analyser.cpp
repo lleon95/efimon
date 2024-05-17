@@ -372,7 +372,7 @@ int main(int argc, char **argv) {
 
 #ifdef ENABLE_RAPL
     for (uint i = 0; i < socket_num; ++i) {
-      EFM_RES << (rapl_readings->socket_power.at(i) * 1e3 / difference) << ",";
+      EFM_RES << rapl_readings->socket_power.at(i) << ",";
     }
 #endif
 
