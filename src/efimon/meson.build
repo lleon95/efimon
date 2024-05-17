@@ -41,6 +41,7 @@ endif
 
 if enable_sql
   lib_efimon_sources += [
+    files('logger/csv.cpp'),
     files('logger/sqlite.cpp'),
   ]
 endif
