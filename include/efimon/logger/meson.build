@@ -6,9 +6,13 @@
 #
 
 lib_logger_headers = []
+
+lib_logger_headers += [
+  files('csv.hpp'),
+]
+
 if enable_sql
   lib_logger_headers += [
     files('sqlite.hpp'),
-    files('csv.hpp'),
   ]
 endif
