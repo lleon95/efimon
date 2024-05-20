@@ -314,13 +314,21 @@ int main(int argc, char **argv) {
       if (family == assembly::InstructionFamily::MEMORY ||
           family == assembly::InstructionFamily::ARITHMETIC ||
           family == assembly::InstructionFamily::LOGIC) {
-        log_table.push_back({"ProbabilityRegister", Logger::FieldType::FLOAT});
-        log_table.push_back({"ProbabilityMemLoad", Logger::FieldType::FLOAT});
-        log_table.push_back({"ProbabilityMemStore", Logger::FieldType::FLOAT});
-        log_table.push_back({"ProbabilityMemUpdate", Logger::FieldType::FLOAT});
+        log_table.push_back(
+            {std::string("ProbabilityRegister") + stype + sfamily,
+             Logger::FieldType::FLOAT});
+        log_table.push_back(
+            {std::string("ProbabilityMemLoad") + stype + sfamily,
+             Logger::FieldType::FLOAT});
+        log_table.push_back(
+            {std::string("ProbabilityMemStore") + stype + sfamily,
+             Logger::FieldType::FLOAT});
+        log_table.push_back(
+            {std::string("ProbabilityMemUpdate") + stype + sfamily,
+             Logger::FieldType::FLOAT});
       } else {
         std::string name = "Probability";
-        name += stype;
+        name += stype + sfamily;
         log_table.push_back({name, Logger::FieldType::FLOAT});
       }
     }
@@ -414,7 +422,7 @@ int main(int argc, char **argv) {
         auto type = static_cast<assembly::InstructionType>(itype);
         std::string stype = AsmClassifier::TypeString(type);
         auto family = static_cast<assembly::InstructionFamily>(ftype);
-
+        std::string sfamily = AsmClassifier::FamilyString(family);
         auto tit = readings_ann->classification.find(type);
 
         if (family == assembly::InstructionFamily::MEMORY ||
@@ -432,13 +440,17 @@ int main(int argc, char **argv) {
                     AsmClassifier::OriginDecomposed(origit->first);
                 if (pairorigin.first == assembly::DataOrigin::MEMORY &&
                     pairorigin.second == assembly::DataOrigin::MEMORY) {
-                  LOG_VAL(values, "ProbabilityMemUpdate", origit->second);
+                  std::string fieldname = "ProbabilityMemUpdate";
+                  LOG_VAL(values, fieldname + stype + sfamily, origit->second);
                 } else if (pairorigin.first == assembly::DataOrigin::MEMORY) {
-                  LOG_VAL(values, "ProbabilityMemLoad", origit->second);
+                  std::string fieldname = "ProbabilityMemLoad";
+                  LOG_VAL(values, fieldname + stype + sfamily, origit->second);
                 } else if (pairorigin.second == assembly::DataOrigin::MEMORY) {
-                  LOG_VAL(values, "ProbabilityMemStore", origit->second);
+                  std::string fieldname = "ProbabilityMemStore";
+                  LOG_VAL(values, fieldname + stype + sfamily, origit->second);
                 } else {
-                  LOG_VAL(values, "ProbabilityRegister", origit->second);
+                  std::string fieldname = "ProbabilityRegister";
+                  LOG_VAL(values, fieldname + stype + sfamily, origit->second);
                 }
               }
             }
@@ -455,7 +467,7 @@ int main(int argc, char **argv) {
             }
           }
           std::string name = "Probability";
-          name += stype;
+          name += stype + sfamily;
           LOG_VAL(values, name, probres);
         }
       }
@@ -483,6 +495,7 @@ int main(int argc, char **argv) {
     LOG_VAL(values, "SystemCpuUsage", sys_cpu_usage->overall_usage);
     LOG_VAL(values, "ProcessCpuUsage", proc_cpu_usage->overall_usage);
     LOG_VAL(values, "TimeDifference", difference);
+    logger.InsertRow(values);
   }
 
   if (check_cmd) {
