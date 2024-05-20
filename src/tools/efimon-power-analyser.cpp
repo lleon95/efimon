@@ -158,14 +158,15 @@ int main(int argc, char **argv) {
   bool check_process = check_cmd ^ check_pid;
   if (argc < 3 || !(check_process)) {
     std::string msg =
-        "ERROR: This command requires the PID and SAMPLES to analyse\n\tUsage: "
+        "This command requires the PID or the COMMAND to "
+        "analyse\n\tUsage: "
         "\n\t";
     msg += std::string(argv[0]);
-    msg += " -p,--pid PID";
-    msg += " -s,--samples SAMPLES (default: 100)";
-    msg += " -o,--output FILENAME (default: measurements.csv)";
-    msg += " -f,--frequency FREQUENCY_HZ (default: 100 Hz)";
-    msg += " -c [COMMAND]\n\t";
+    msg += "\n\t\t -p,--pid PID\n\t\t";
+    msg += " -s,--samples SAMPLES (default: 100)\n\t\t";
+    msg += " -o,--output FILENAME (default: measurements.csv)\n\t\t";
+    msg += " -f,--frequency FREQUENCY_HZ (default: 100 Hz)\n\t\t";
+    msg += " -c [COMMAND]\n\t\t";
     msg += " -p and -c are mutually exclusive. -c goes to the end always!";
     EFM_ERROR(msg);
   }
