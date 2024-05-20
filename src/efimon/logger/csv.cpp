@@ -6,16 +6,14 @@
  * @copyright Copyright (c) 2024. See License for Licensing
  */
 
-#include <efimon/logger/csv.hpp>
-
 #include <cstdint>
+#include <efimon/logger/csv.hpp>
+#include <efimon/status.hpp>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <tuple>
 #include <unordered_map>
-
-#include <efimon/status.hpp>
 
 namespace efimon {
 
@@ -23,12 +21,12 @@ std::string CSVLogger::Stringify(const std::shared_ptr<Logger::IValue> val) {
   switch (val->type) {
     case Logger::FieldType::INTEGER64: {
       auto valc = std::dynamic_pointer_cast<const Logger::Value<int64_t>>(val);
-      if (!valc) return std::string{};
+      if (!valc) return std::string{"0"};
       return std::to_string(valc->val);
     }
     case Logger::FieldType::FLOAT: {
       auto valc = std::dynamic_pointer_cast<const Logger::Value<float>>(val);
-      if (!valc) return std::string{};
+      if (!valc) return std::string{"0.0"};
       return std::to_string(valc->val);
     }
     case Logger::FieldType::STRING: {

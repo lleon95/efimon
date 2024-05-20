@@ -362,7 +362,8 @@ int main(int argc, char **argv) {
   bool first = true;
   for (uint t = 0; t < timelimit; ++t) {
     std::cout << std::flush;
-    std::unordered_map<std::string, std::shared_ptr<Logger::IValue>> values;
+    std::unordered_map<std::string, std::shared_ptr<Logger::IValue>> values =
+        {};
     bool finished = false;
     manager_mutex.lock();
     finished = terminated;
