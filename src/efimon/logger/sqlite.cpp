@@ -6,16 +6,13 @@
  * @copyright Copyright (c) 2024. See License for Licensing
  */
 
-#include <efimon/logger/sqlite.hpp>
-
 #include <cstdint>
-#include <iostream>
+#include <efimon/logger/sqlite.hpp>
+#include <efimon/status.hpp>
 #include <memory>
 #include <string>
 #include <tuple>
 #include <unordered_map>
-
-#include <efimon/status.hpp>
 
 namespace efimon {
 static std::unordered_map<Logger::FieldType, std::string> kSqlMapping = {
@@ -27,13 +24,15 @@ static std::unordered_map<Logger::FieldType, std::string> kSqlMapping = {
 std::string SQLiteLogger::Stringify(const std::shared_ptr<Logger::IValue> val) {
   switch (val->type) {
     case Logger::FieldType::INTEGER64: {
-      auto valc = std::dynamic_pointer_cast<const Logger::Value<int64_t>>(val);
-      if (!valc) return std::string{};
-      return std::to_string(valc->val);
+      auto vali = std::dynamic_pointer_cast<const Logger::Value<int64_t>>(val);
+      auto valu = std::dynamic_pointer_cast<const Logger::Value<uint64_t>>(val);
+      if (vali) return std::to_string(vali->val);
+      if (valu) return std::to_string(valu->val);
+      return std::string{"0"};
     }
     case Logger::FieldType::FLOAT: {
       auto valc = std::dynamic_pointer_cast<const Logger::Value<float>>(val);
-      if (!valc) return std::string{};
+      if (!valc) return std::string{"0.0"};
       return std::to_string(valc->val);
     }
     case Logger::FieldType::STRING: {

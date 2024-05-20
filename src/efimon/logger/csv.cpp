@@ -9,7 +9,6 @@
 #include <cstdint>
 #include <efimon/logger/csv.hpp>
 #include <efimon/status.hpp>
-#include <iostream>
 #include <memory>
 #include <string>
 #include <tuple>
@@ -20,9 +19,11 @@ namespace efimon {
 std::string CSVLogger::Stringify(const std::shared_ptr<Logger::IValue> val) {
   switch (val->type) {
     case Logger::FieldType::INTEGER64: {
-      auto valc = std::dynamic_pointer_cast<const Logger::Value<int64_t>>(val);
-      if (!valc) return std::string{"0"};
-      return std::to_string(valc->val);
+      auto vali = std::dynamic_pointer_cast<const Logger::Value<int64_t>>(val);
+      auto valu = std::dynamic_pointer_cast<const Logger::Value<uint64_t>>(val);
+      if (vali) return std::to_string(vali->val);
+      if (valu) return std::to_string(valu->val);
+      return std::string{"0"};
     }
     case Logger::FieldType::FLOAT: {
       auto valc = std::dynamic_pointer_cast<const Logger::Value<float>>(val);
@@ -56,6 +57,10 @@ Status CSVLogger::InsertRow(
 
     if (vals.find(field.first) != vals.end()) {
       msg = Stringify(vals.at(field.first));
+    } else if (field.second == Logger::FieldType::INTEGER64) {
+      msg = "0";
+    } else if (field.second == Logger::FieldType::FLOAT) {
+      msg = "0.0";
     }
 
     this->csv_file_ << "," << msg;
