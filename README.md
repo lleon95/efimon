@@ -94,6 +94,8 @@ For the `$OPTIONS`, you can select the following:
 | enable-rapl            | true             | [true, false] | Enable the RAPL Interface        |
 | enable-sql             | true             | [true, false] | Enable the SQL Logger            |
 | enable-ipmi            | true             | [true, false] | Enable the IPMI Logger           |
+| enable-nethogs            | true             | [true, false] | Enable the Nethogs looger           |
+
 
 ### Testing the installation
 
