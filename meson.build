@@ -111,6 +111,7 @@ if get_option('enable-nethogs')
     'warning_level=0'
   ])
   libnethogs_dep = libnethogs_proj.get_variable('libnethogs_dep')
+  libnethogs_inc = libnethogs_proj.get_variable('projectinc')
   project_deps += libnethogs_dep
 endif
 
