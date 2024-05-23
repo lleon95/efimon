@@ -104,3 +104,13 @@ executable('frequency-query',
           dependencies: [libefimon_dep],
           install : false,
 )
+
+executable('csv-testing',
+          [
+            files('csv-testing.cpp')
+          ],
+          cpp_args : cpp_args,
+          include_directories : [project_inc],
+          dependencies: [libefimon_dep],
+          install : false,
+)

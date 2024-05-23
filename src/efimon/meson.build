@@ -18,6 +18,7 @@ lib_efimon_sources += [
   files('asm-classifier/x86-classifier.cpp'),
   files('proc/cpuinfo.cpp'),
   files('process-manager.cpp'),
+  files('logger/csv.cpp'),
 ]
 
 if enable_rapl

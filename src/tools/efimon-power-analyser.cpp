@@ -27,6 +27,7 @@
 #include <condition_variable>  // NOLINT
 #include <efimon/arg-parser.hpp>
 #include <efimon/asm-classifier.hpp>
+#include <efimon/logger/csv.hpp>
 #include <efimon/perf/annotate.hpp>
 #include <efimon/perf/record.hpp>
 #include <efimon/power/ipmi.hpp>
@@ -65,6 +66,9 @@
     if (s_.code != Status::OK) EFM_ERROR(s_.msg); \
   }
 #define EFM_RES std::cout
+#define LOG_VAL(vars, name, val)   \
+  (vars)[name] = std::make_shared< \
+      Logger::Value<std::remove_reference<decltype(val)>::type>>((val));
 
 using namespace efimon;  // NOLINT
 
@@ -72,6 +76,7 @@ static constexpr int kDelay = 1;                // 1 second
 static constexpr uint kDefFrequency = 100;      // 100 Hz
 static constexpr int kThreadCheckTime = 10;     // 10 millis
 static constexpr uint kDefaultTimelimit = 100;  // 100 samples
+static constexpr char kDefaultOutputFilename[] = "measurements.csv";
 
 void launch_command(ProcessManager &proc,                        // NOLINT
                     const std::vector<std::string> &args,        // NOLINT
@@ -126,6 +131,8 @@ int main(int argc, char **argv) {
   uint frequency = kDefFrequency;
   uint timelimit = kDefaultTimelimit;
   uint pid = 0;
+  std::string log_filename = kDefaultOutputFilename;
+  std::vector<Logger::MapTuple> log_table;
 
   // Process management
   std::thread manager_thread;
@@ -151,13 +158,15 @@ int main(int argc, char **argv) {
   bool check_process = check_cmd ^ check_pid;
   if (argc < 3 || !(check_process)) {
     std::string msg =
-        "ERROR: This command requires the PID and SAMPLES to analyse\n\tUsage: "
+        "This command requires the PID or the COMMAND to "
+        "analyse\n\tUsage: "
         "\n\t";
     msg += std::string(argv[0]);
-    msg += " -p,--pid PID";
-    msg += " -s,--samples SAMPLES (default: 100)";
-    msg += " -f,--frequency FREQUENCY_HZ (default: 100 Hz)";
-    msg += " -c [COMMAND]\n\t";
+    msg += "\n\t\t -p,--pid PID\n\t\t";
+    msg += " -s,--samples SAMPLES (default: 100)\n\t\t";
+    msg += " -o,--output FILENAME (default: measurements.csv)\n\t\t";
+    msg += " -f,--frequency FREQUENCY_HZ (default: 100 Hz)\n\t\t";
+    msg += " -c [COMMAND]\n\t\t";
     msg += " -p and -c are mutually exclusive. -c goes to the end always!";
     EFM_ERROR(msg);
   }
@@ -230,9 +239,16 @@ int main(int argc, char **argv) {
                                          : argparser.GetOption("--frequency"));
   }
 
+  // Extract the filename
+  if (argparser.Exists("-o") || argparser.Exists("--output")) {
+    log_filename = argparser.Exists("-o") ? argparser.GetOption("-o")
+                                          : argparser.GetOption("--output");
+  }
+
   EFM_INFO(std::string("Analysing PID ") + std::to_string(pid));
   EFM_INFO(std::string("Frequency: ") + std::to_string(frequency));
   EFM_INFO(std::string("Samples: ") + std::to_string(timelimit));
+  EFM_INFO(std::string("Output file: ") + log_filename);
 
   // ------------ Configure all tools ------------
 #ifdef ENABLE_IPMI
@@ -277,12 +293,12 @@ int main(int argc, char **argv) {
   CPUInfo cpuinfo{};
 
   // ------------ Making table header ------------
-  EFM_INFO("Readings:");
-  EFM_RES << "Timestamp"
-          << ",";
+  log_table.push_back({"Timestamp", Logger::FieldType::INTEGER64});
 #ifdef ENABLE_RAPL
   for (uint i = 0; i < socket_num; ++i) {
-    EFM_RES << "SocketPower" << i << ",";
+    std::string name = "SocketPower";
+    name += std::to_string(i);
+    log_table.push_back({name, Logger::FieldType::FLOAT});
   }
 #endif
 #ifdef ENABLE_PERF
@@ -299,36 +315,56 @@ int main(int argc, char **argv) {
       if (family == assembly::InstructionFamily::MEMORY ||
           family == assembly::InstructionFamily::ARITHMETIC ||
           family == assembly::InstructionFamily::LOGIC) {
-        EFM_RES << "ProbabilityRegister" << stype << sfamily << ",";
-        EFM_RES << "ProbabilityMemLoad" << stype << sfamily << ",";
-        EFM_RES << "ProbabilityMemStore" << stype << sfamily << ",";
-        EFM_RES << "ProbabilityMemUpdate" << stype << sfamily << ",";
+        log_table.push_back(
+            {std::string("ProbabilityRegister") + stype + sfamily,
+             Logger::FieldType::FLOAT});
+        log_table.push_back(
+            {std::string("ProbabilityMemLoad") + stype + sfamily,
+             Logger::FieldType::FLOAT});
+        log_table.push_back(
+            {std::string("ProbabilityMemStore") + stype + sfamily,
+             Logger::FieldType::FLOAT});
+        log_table.push_back(
+            {std::string("ProbabilityMemUpdate") + stype + sfamily,
+             Logger::FieldType::FLOAT});
       } else {
-        EFM_RES << "Probability" << stype << sfamily << ",";
+        std::string name = "Probability";
+        name += stype + sfamily;
+        log_table.push_back({name, Logger::FieldType::FLOAT});
       }
     }
   }
 #endif
 #ifdef ENABLE_IPMI
   for (uint i = 0; i < psu_num; ++i) {
-    EFM_RES << "PSUPower" << i << ",";
+    std::string name = "PSUPower";
+    name += std::to_string(i);
+    log_table.push_back({name, Logger::FieldType::FLOAT});
   }
   for (uint i = 0; i < fan_num; ++i) {
-    EFM_RES << "FanSpeed" << i << ",";
+    std::string name = "FanSpeed";
+    name += std::to_string(i);
+    log_table.push_back({name, Logger::FieldType::FLOAT});
   }
 #endif
   for (int i = 0; i < cpuinfo.GetNumSockets(); ++i) {
-    EFM_RES << "SocketFreq" << i << ",";
+    std::string name = "SocketFreq";
+    name += std::to_string(i);
+    log_table.push_back({name, Logger::FieldType::FLOAT});
   }
-  EFM_RES << "SystemCpuUsage"
-          << ",";
-  EFM_RES << "ProcessCpuUsage"
-          << ",";
-  EFM_RES << "TimeDifference" << std::endl;
+  log_table.push_back({"SystemCpuUsage", Logger::FieldType::FLOAT});
+  log_table.push_back({"ProcessCpuUsage", Logger::FieldType::FLOAT});
+  log_table.push_back({"TimeDifference", Logger::FieldType::INTEGER64});
+
+  // ------------ Configure logger ---------
+  CSVLogger logger{log_filename, log_table};
+
   // ------------ Perform reads ------------
   bool first = true;
   for (uint t = 0; t < timelimit; ++t) {
     std::cout << std::flush;
+    std::unordered_map<std::string, std::shared_ptr<Logger::IValue>> values =
+        {};
     bool finished = false;
     manager_mutex.lock();
     finished = terminated;
@@ -368,11 +404,13 @@ int main(int argc, char **argv) {
       first = false;
       continue;
     }
-    EFM_RES << timestamp << ",";
+    LOG_VAL(values, "Timestamp", timestamp);
 
 #ifdef ENABLE_RAPL
     for (uint i = 0; i < socket_num; ++i) {
-      EFM_RES << rapl_readings->socket_power.at(i) << ",";
+      std::string name = "SocketPower";
+      name += std::to_string(i);
+      LOG_VAL(values, name, rapl_readings->socket_power.at(i));
     }
 #endif
 
@@ -384,8 +422,9 @@ int main(int argc, char **argv) {
            ftype < static_cast<uint>(assembly::InstructionFamily::OTHER);
            ++ftype) {
         auto type = static_cast<assembly::InstructionType>(itype);
+        std::string stype = AsmClassifier::TypeString(type);
         auto family = static_cast<assembly::InstructionFamily>(ftype);
-
+        std::string sfamily = AsmClassifier::FamilyString(family);
         auto tit = readings_ann->classification.find(type);
 
         if (family == assembly::InstructionFamily::MEMORY ||
@@ -403,20 +442,20 @@ int main(int argc, char **argv) {
                     AsmClassifier::OriginDecomposed(origit->first);
                 if (pairorigin.first == assembly::DataOrigin::MEMORY &&
                     pairorigin.second == assembly::DataOrigin::MEMORY) {
-                  probs[3] += origit->second;
+                  std::string fieldname = "ProbabilityMemUpdate";
+                  LOG_VAL(values, fieldname + stype + sfamily, origit->second);
                 } else if (pairorigin.first == assembly::DataOrigin::MEMORY) {
-                  probs[1] += origit->second;
+                  std::string fieldname = "ProbabilityMemLoad";
+                  LOG_VAL(values, fieldname + stype + sfamily, origit->second);
                 } else if (pairorigin.second == assembly::DataOrigin::MEMORY) {
-                  probs[2] += origit->second;
+                  std::string fieldname = "ProbabilityMemStore";
+                  LOG_VAL(values, fieldname + stype + sfamily, origit->second);
                 } else {
-                  probs[0] += origit->second;
+                  std::string fieldname = "ProbabilityRegister";
+                  LOG_VAL(values, fieldname + stype + sfamily, origit->second);
                 }
               }
             }
-          }
-
-          for (const auto prob : probs) {
-            EFM_RES << prob << ",";
           }
         } else {
           float probres = 0.f;
@@ -429,7 +468,9 @@ int main(int argc, char **argv) {
               }
             }
           }
-          EFM_RES << probres << ",";
+          std::string name = "Probability";
+          name += stype + sfamily;
+          LOG_VAL(values, name, probres);
         }
       }
     }
@@ -438,18 +479,25 @@ int main(int argc, char **argv) {
     // PSU columns
 #ifdef ENABLE_IPMI
     for (uint i = 0; i < psu_num; ++i) {
-      EFM_RES << psu_readings->psu_power.at(i) << ",";
+      std::string name = "PSUPower";
+      name += std::to_string(i);
+      LOG_VAL(values, name, psu_readings->psu_power.at(i));
     }
     for (uint i = 0; i < fan_num; ++i) {
-      EFM_RES << fan_readings->fan_speeds.at(i) << ",";
+      std::string name = "FanSpeed";
+      name += std::to_string(i);
+      LOG_VAL(values, name, fan_readings->fan_speeds.at(i));
     }
 #endif
-    for (const float freq : cpuinfo.GetSocketMeanFrequency()) {
-      EFM_RES << freq << ",";
+    for (int i = 0; i < cpuinfo.GetNumSockets(); ++i) {
+      std::string name = "SocketFreq";
+      name += std::to_string(i);
+      LOG_VAL(values, name, cpuinfo.GetSocketMeanFrequency()[i]);
     }
-    EFM_RES << sys_cpu_usage->overall_usage << ",";
-    EFM_RES << proc_cpu_usage->overall_usage << ",";
-    EFM_RES << difference << std::endl;
+    LOG_VAL(values, "SystemCpuUsage", sys_cpu_usage->overall_usage);
+    LOG_VAL(values, "ProcessCpuUsage", proc_cpu_usage->overall_usage);
+    LOG_VAL(values, "TimeDifference", difference);
+    logger.InsertRow(values);
   }
 
   if (check_cmd) {
