@@ -156,7 +156,16 @@ if enable_ptrace_capstone
             ],
             cpp_args : cpp_args,
             include_directories : [project_inc],
-            dependencies: [project_deps, libefimon_dep],
+            dependencies: [project_deps, libefimon_dep])
+
+if enable_nethogs
+  executable('nethogs-test',
+            [
+              files('nethogs-test.cpp')
+            ],
+            cpp_args : cpp_args,
+            include_directories : [project_inc, libnethogs_inc],
+            dependencies: [libefimon_dep, dependency('threads'), project_deps],
             install : false,
   )
 endif
