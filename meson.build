@@ -8,7 +8,6 @@
 project('efimon', ['c','cpp'], version : '0.2.0',
         default_options : ['warning_level=3',
                            'cpp_std=c++17',
-                           'c_std=c17',
                            ],
         license: 'LGPL-2.1-only',
         meson_version: '>= 1.0.0' 
@@ -152,6 +151,17 @@ else
 endif
 
 project_deps += dependency('threads')
+
+# Verify if Nethogs exists
+enable_nethogs = false
+if get_option('enable-nethogs')
+  enable_nethogs = true
+  libnethogs_proj = subproject('libnethogs', default_options: [
+    'warning_level=0'
+  ])
+  libnethogs_dep = libnethogs_proj.get_variable('libnethogs_dep')
+  project_deps += libnethogs_dep
+endif
 
 # -----------------------------------------------------------------------------
 # Developer mode options

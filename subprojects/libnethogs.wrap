@@ -1,0 +1,7 @@
+[wrap-git]
+url = https://github.com/lleon95/nethogs
+revision = main
+depth = 1
+
+[provide]
+libnethogs = libnethogs_dep
