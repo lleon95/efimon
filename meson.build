@@ -104,6 +104,22 @@ else
   warning('RAPL not found. Disabling code related to Intel RAPL')
 endif
 
+# Verify if NVIDIA ML exists
+enable_nvidia_dgpu = false
+if get_option('enable-nvml')
+  nvidia_ml_dep = cpp.find_library('nvidia-ml', required: false)
+  cuda_dep = dependency('cuda', version : '>=10', required: false)
+  if nvidia_ml_dep.found() and cuda_dep.found()
+    project_deps += [nvidia_ml_dep, cuda_dep]
+    c_args += ['-DENABLE_NVIDIA_NVML']
+    cpp_args += ['-DENABLE_NVIDIA_NVML']
+    enable_nvidia_dgpu = true
+    message('NVIDIA NVML found')
+  else
+    warning('NVIDIA NVML not found')
+  endif
+endif
+
 # -----------------------------------------------------------------------------
 # Developer mode options
 # -----------------------------------------------------------------------------

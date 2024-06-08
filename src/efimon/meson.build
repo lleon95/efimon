@@ -51,3 +51,9 @@ if enable_ipmi and enable_ipmi_sensors
     files('power/ipmi.cpp'),
   ]
 endif
+
+if enable_nvidia_dgpu
+  lib_efimon_sources += [
+    files('gpu/nvidia.cpp'),
+  ]
+endif

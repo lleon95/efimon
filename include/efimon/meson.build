@@ -41,6 +41,9 @@ subdir('proc')
 # Reading Specifics
 subdir('readings')
 
+# GPU Specifics
+subdir('gpu')
+
 # Concatenate all
 lib_headers = lib_iface_headers
 lib_headers += lib_asm_classifier_headers
@@ -49,6 +52,7 @@ lib_headers += lib_perf_headers
 lib_headers += lib_power_headers
 lib_headers += lib_proc_headers
 lib_headers += lib_readings_headers
+lib_headers += lib_gpu_headers
 
 install_headers(lib_asm_classifier_headers, subdir : 'efimon/asm-classifier')
 install_headers(lib_logger_headers, subdir : 'efimon/logger')
@@ -56,3 +60,4 @@ install_headers(lib_perf_headers, subdir : 'efimon/perf')
 install_headers(lib_power_headers, subdir : 'efimon/power')
 install_headers(lib_proc_headers, subdir : 'efimon/proc')
 install_headers(lib_readings_headers, subdir : 'efimon/readings')
+install_headers(lib_gpu_headers, subdir : 'efimon/gpu')

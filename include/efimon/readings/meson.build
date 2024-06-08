@@ -14,4 +14,5 @@ lib_readings_headers += [
   files('net-readings.hpp'),
   files('ram-readings.hpp'),
   files('psu-readings.hpp'),
+  files('gpu-readings.hpp'),
 ]
