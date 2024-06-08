@@ -15,6 +15,11 @@
 #include <efimon/readings/gpu-readings.hpp>
 #include <vector>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#include <nvml.h>
+#pragma GCC diagnostic pop
+
 namespace efimon {
 
 /**
@@ -156,6 +161,12 @@ class NVIDIAMeterObserver : public Observer {
   uint device_;
   /** Readings from GPU */
   GPUReadings readings_;
+  /** Device handler from the ID: needs to be refreshed every device change */
+  nvmlDevice_t device_handle_;
+  /** Processes information: needs to be refreshed very trigger */
+  nvmlProcessInfo_t* process_info_;
+  /** Process information: needs to be refreshed very trigger */
+  nvmlAccountingStats_t stats_;
 };
 
 } /* namespace efimon */
