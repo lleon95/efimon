@@ -21,15 +21,19 @@ namespace efimon {
 struct GPUReadings : public Readings {
   /** Average usage of all the GPU */
   float overall_usage;
-  /** Average power of all the GPU */
+  /** Average power of all the GPU in Watts. Available in SYSTEM */
   float overall_power;
-  /** Average energy of all the GPU */
-  float overall_energy;
-  /** Usage per GPU */
+  /** Average memory of all the GPU in KiB. When SYSTEM, it is a percentage */
+  float overall_memory;
+  /** Average SM clock speed in MHz. Available in SYSTEM */
+  float clock_speed_sm;
+  /** Average MEM clock speed in MHz. Available in SYSTEM */
+  float clock_speed_mem;
+  /** Usage per GPU: Currently unused */
   std::vector<float> gpu_usage;
-  /** Power per GPU */
+  /** Power per GPU: Currently unused */
   std::vector<float> gpu_power;
-  /** Energy per GPU */
+  /** Energy per GPU: Currently unused */
   std::vector<float> gpu_energy;
   /** Destructor to enable the inheritance */
   virtual ~GPUReadings() = default;

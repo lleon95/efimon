@@ -22,6 +22,8 @@
 
 namespace efimon {
 
+static constexpr int kNumProcessLimit = 256;
+
 /**
  * @brief Observer class that wraps the NVML interface and gets the
  * consumption, usage and power in a granular and general overview.
@@ -163,10 +165,20 @@ class NVIDIAMeterObserver : public Observer {
   GPUReadings readings_;
   /** Device handler from the ID: needs to be refreshed every device change */
   nvmlDevice_t device_handle_;
-  /** Processes information: needs to be refreshed very trigger */
-  nvmlProcessInfo_t* process_info_;
   /** Process information: needs to be refreshed very trigger */
   nvmlAccountingStats_t stats_;
+  /** Processes: encapsulates the running processes */
+  nvmlProcessInfo_t process_info_[kNumProcessLimit];
+  /** Running processes */
+  uint running_processes_;
+  /** System usage */
+  nvmlUtilization_t sys_usage_;
+
+  Status GetRunningProcesses();
+
+  Status GetProcessStats(const uint pid);
+
+  Status GetSystemStats();
 };
 
 } /* namespace efimon */
