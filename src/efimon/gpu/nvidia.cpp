@@ -35,7 +35,8 @@ NVIDIAMeterObserver::NVIDIAMeterObserver(const uint pid,
                  "Cannot initialise the NVML using nvmlInit_v2"};
   }
 
-  this->Reset();
+  auto st = this->Reset();
+  if (Status::OK != st) throw st;
 }
 
 const std::vector<ObserverCapabilities>& NVIDIAMeterObserver::GetCapabilities()
