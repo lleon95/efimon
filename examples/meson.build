@@ -114,3 +114,15 @@ executable('csv-testing',
           dependencies: [libefimon_dep],
           install : false,
 )
+
+if enable_nvidia_dgpu
+  executable('nvidia-ml-testing',
+            [
+              files('nvidia-ml-testing.cpp')
+            ],
+            cpp_args : cpp_args,
+            include_directories : [project_inc],
+            dependencies: [libefimon_dep, project_deps],
+            install : false,
+  )
+endif
