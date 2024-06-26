@@ -36,7 +36,7 @@ NVIDIAMeterObserver::NVIDIAMeterObserver(const uint pid,
   }
 
   auto st = this->Reset();
-  if (Status::OK != st) throw st;
+  if (Status::OK != st.code) throw st;
 }
 
 const std::vector<ObserverCapabilities>& NVIDIAMeterObserver::GetCapabilities()

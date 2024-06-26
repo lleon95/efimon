@@ -36,6 +36,17 @@ int main(int argc, char **argv) {
   auto readings_iface = meter.GetReadings()[0];
   GPUReadings *readings = dynamic_cast<GPUReadings *>(readings_iface);
 
+  // Create table
+  if (ObserverScope::SYSTEM == scope) {
+    std::cout << "OverallUsage(perc),"
+              << "OverallMemory(perc),"
+              << "OverallPower(W),"
+              << "ClockSM(MHz),"
+              << "ClockMEM(MHz)" << std::endl;
+  } else {
+    std::cout << "OverallUsage(perc),OverallMemory(kiB)" << std::endl;
+  }
+
   for (uint i = 0; i < 30; ++i) {
     sleep(kDelay);
     auto res = meter.Trigger();
@@ -44,21 +55,15 @@ int main(int argc, char **argv) {
       break;
     }
 
-    std::cout << "Overall Usage: " << readings->overall_usage << " %"
-              << std::endl;
+    std::cout << readings->overall_usage << ",";
 
     if (ObserverScope::SYSTEM == scope) {
-      std::cout << "Overall Memory: " << readings->overall_memory << " %"
-                << std::endl;
-      std::cout << "Overall Power: " << readings->overall_power << " W"
-                << std::endl;
-      std::cout << "Overall Clock SM: " << readings->clock_speed_sm << " MHz"
-                << std::endl;
-      std::cout << "Overall Clock MEM: " << readings->clock_speed_mem << " MHz"
-                << std::endl;
+      std::cout << readings->overall_memory << ",";
+      std::cout << readings->overall_power << ",";
+      std::cout << readings->clock_speed_sm << ",";
+      std::cout << readings->clock_speed_mem << std::endl;
     } else {
-      std::cout << "Overall Memory: " << readings->overall_memory << " kiB"
-                << std::endl;
+      std::cout << readings->overall_memory << std::endl;
     }
   }
 
