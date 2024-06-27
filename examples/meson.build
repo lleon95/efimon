@@ -126,3 +126,13 @@ if enable_nvidia_dgpu
             install : false,
   )
 endif
+
+executable('ptx-interpreter',
+          [
+            files('ptx-interpreter.cpp')
+          ],
+          cpp_args : cpp_args,
+          include_directories : [project_inc],
+          dependencies: [libefimon_dep],
+          install : false,
+)
