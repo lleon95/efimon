@@ -118,7 +118,7 @@ int main(int argc, char **argv) {
     std::cout << "OverallUsage(perc),OverallMemory(kiB)" << std::endl;
   }
 
-  for (;;) {
+  for (uint i = 0; i < 50; ++i) {
     sleep(kDelay);
     auto res = meter.Trigger();
     if (Status::OK != res.code) {
