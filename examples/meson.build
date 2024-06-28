@@ -125,6 +125,15 @@ if enable_nvidia_dgpu
             dependencies: [libefimon_dep, project_deps],
             install : false,
   )
+  executable('nvidia-ml-measurement',
+            [
+              files('nvidia-ml-measurement.cpp')
+            ],
+            cpp_args : cpp_args,
+            include_directories : [project_inc],
+            dependencies: [libefimon_dep, project_deps, dependency('threads')],
+            install : false,
+  )
 endif
 
 executable('ptx-interpreter',
