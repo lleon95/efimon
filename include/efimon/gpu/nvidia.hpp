@@ -113,8 +113,8 @@ class NVIDIAMeterObserver : public Observer {
    *
    * @return vector of capabilities
    */
-  const std::vector<ObserverCapabilities>& GetCapabilities() const
-      noexcept override;
+  const std::vector<ObserverCapabilities>& GetCapabilities()
+      const noexcept override;
 
   /**
    * @brief Get the Status of the Observer
@@ -173,6 +173,8 @@ class NVIDIAMeterObserver : public Observer {
   uint running_processes_;
   /** System usage */
   nvmlUtilization_t sys_usage_;
+  /** Previous energy */
+  float prev_energy_;
 
   Status GetRunningProcesses();
 
