@@ -14,6 +14,9 @@
 #include <vector>
 
 namespace efimon {
+
+extern uint64_t GetUptime();
+
 NVIDIAMeterObserver::NVIDIAMeterObserver(const uint pid,
                                          const ObserverScope scope,
                                          const uint64_t interval)
@@ -58,6 +61,10 @@ Status NVIDIAMeterObserver::Reset() {
     return Status{Status::CONFIGURATION_ERROR,
                   "Cannot configure the NVML to enable the accounting mode"};
   }
+
+  this->readings_.timestamp = GetUptime();
+  this->readings_.difference = 0;
+  this->prev_energy_ = 0.f;
 
   return Status{};
 }
@@ -105,8 +112,9 @@ Status NVIDIAMeterObserver::GetProcessStats(const uint pid) {
 
 Status NVIDIAMeterObserver::GetSystemStats() {
   nvmlReturn_t res = NVML_SUCCESS;
-  uint power_usage = 0, clock_mhz_sm = 0, clock_mhz_mem = 0;
+  uint clock_mhz_sm = 0, clock_mhz_mem = 0;
   Status st{};
+  unsigned long long energy_usage;  // NOLINT
   res = nvmlDeviceGetUtilizationRates(this->device_handle_, &this->sys_usage_);
   if (NVML_SUCCESS != res) {
     return Status{Status::CANNOT_OPEN,
@@ -116,9 +124,19 @@ Status NVIDIAMeterObserver::GetSystemStats() {
   this->readings_.overall_usage = static_cast<float>(this->sys_usage_.gpu);
   this->readings_.overall_memory = static_cast<float>(this->sys_usage_.memory);
 
-  res = nvmlDeviceGetPowerUsage(this->device_handle_, &power_usage);
-  this->readings_.overall_power =
-      NVML_SUCCESS != res ? -1.f : static_cast<float>(power_usage) / 1000;
+  auto time = GetUptime();
+  this->readings_.difference = time - this->readings_.timestamp;
+  this->readings_.timestamp = time;
+
+  /* Get Energy in Joules: use this instead of power because it is softer */
+  res =
+      nvmlDeviceGetTotalEnergyConsumption(this->device_handle_, &energy_usage);
+  float new_energy = static_cast<float>(energy_usage);  // get micros
+  float power_usage = (new_energy - this->prev_energy_) /
+                      static_cast<float>(this->readings_.difference);
+
+  this->readings_.overall_power = NVML_SUCCESS != res ? -1.f : power_usage;
+  this->prev_energy_ = new_energy;
 
   res = nvmlDeviceGetClockInfo(this->device_handle_, NVML_CLOCK_SM,
                                &clock_mhz_sm);
