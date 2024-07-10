@@ -114,7 +114,7 @@ Status NVIDIAMeterObserver::GetSystemStats() {
   nvmlReturn_t res = NVML_SUCCESS;
   uint clock_mhz_sm = 0, clock_mhz_mem = 0;
   Status st{};
-  unsigned long long energy_usage;  // NOLINT
+  uint64_t energy_usage;
   res = nvmlDeviceGetUtilizationRates(this->device_handle_, &this->sys_usage_);
   if (NVML_SUCCESS != res) {
     return Status{Status::CANNOT_OPEN,
@@ -128,16 +128,16 @@ Status NVIDIAMeterObserver::GetSystemStats() {
   this->readings_.difference = time - this->readings_.timestamp;
   this->readings_.timestamp = time;
 
-  /* Get Energy in Joules: use this instead of power because it is softer */
+  /* Get Energy in Joules */
   res =
       nvmlDeviceGetTotalEnergyConsumption(this->device_handle_, &energy_usage);
-  float new_energy = static_cast<float>(energy_usage);  // get micros
+  float new_energy = static_cast<float>(energy_usage);
   float power_usage = (new_energy - this->prev_energy_) /
                       static_cast<float>(this->readings_.difference);
 
   this->readings_.overall_power = NVML_SUCCESS != res ? -1.f : power_usage;
-  this->prev_energy_ = new_energy;
 
+  this->prev_energy_ = new_energy;
   res = nvmlDeviceGetClockInfo(this->device_handle_, NVML_CLOCK_SM,
                                &clock_mhz_sm);
   if (NVML_SUCCESS != res) {
