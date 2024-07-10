@@ -15,14 +15,17 @@
 #include <efimon/readings/gpu-readings.hpp>
 #include <vector>
 
+#ifdef ENABLE_NVIDIA_NVML
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
 #include <nvml.h>
 #pragma GCC diagnostic pop
+#endif  // ENABLE_NVIDIA_NVML
 
 namespace efimon {
 
 static constexpr int kNumProcessLimit = 256;
+static constexpr int kNumMaxHandles = 32;
 
 /**
  * @brief Observer class that wraps the NVML interface and gets the
@@ -156,32 +159,65 @@ class NVIDIAMeterObserver : public Observer {
    */
   virtual ~NVIDIAMeterObserver();
 
+  /**
+   * @brief Gets the number of GPUs
+   *
+   * @return uint32_t number of GPUS
+   */
+  static uint32_t GetGPUCount();
+
  private:
   /** The results are valid */
   bool valid_;
+
+#ifdef ENABLE_NVIDIA_NVML
+  /** Initialised */
+  bool init_;
   /** GPU device */
   uint device_;
+  /** Num devices */
+  uint32_t num_devices_;
   /** Readings from GPU */
   GPUReadings readings_;
   /** Device handler from the ID: needs to be refreshed every device change */
-  nvmlDevice_t device_handle_;
-  /** Process information: needs to be refreshed very trigger */
-  nvmlAccountingStats_t stats_;
+  nvmlDevice_t device_handles_[kNumMaxHandles];
   /** Processes: encapsulates the running processes */
-  nvmlProcessInfo_t process_info_[kNumProcessLimit];
+  nvmlProcessInfo_t process_info_[kNumMaxHandles][kNumProcessLimit];
   /** Running processes */
-  uint running_processes_;
+  uint running_processes_[kNumMaxHandles];
   /** System usage */
   nvmlUtilization_t sys_usage_;
-  /** Previous energy */
-  float prev_energy_;
 
+  /**
+   * @brief Get the Running Processes
+   *
+   * Get all running processes in GPU
+   * @return Status
+   */
   Status GetRunningProcesses();
 
-  Status GetProcessStats(const uint pid);
+  /**
+   * @brief Get the Process Stats
+   *
+   * @param device device to account the stats
+   * @param pid pid of the process to get the stats from
+   * @return Status
+   */
+  Status GetProcessStats(const uint pid, const uint device);
 
-  Status GetSystemStats();
+  /**
+   * @brief Get the System Stats
+   *
+   * @param device device to account the stats
+   * @return Status
+   */
+  Status GetSystemStats(const uint device);
+#endif  // ENABLE_NVIDIA_NVML
 };
+
+#ifndef ENABLE_NVIDIA_NVML
+inline uint32_t NVIDIAMeterObserver::GetGPUCount() { return 0; }
+#endif  // ENABLE_NVIDIA_NVML
 
 } /* namespace efimon */
 

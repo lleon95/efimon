@@ -52,7 +52,6 @@ void launch_command(ProcessManager &proc,                  // NOLINT
 
 int main(int argc, char **argv) {
   uint pid = 0;
-  ObserverScope scope = ObserverScope::SYSTEM;
 
   ArgParser argparser(argc, argv);
   if (argc < 3 || !(argparser.Exists("-c"))) {
@@ -103,20 +102,37 @@ int main(int argc, char **argv) {
     std::cout << "\tPID User Command: " << proc1.GetPID() << std::endl;
   }
 
-  NVIDIAMeterObserver meter{pid, scope};
+  NVIDIAMeterObserver meter{pid, ObserverScope::SYSTEM};
+  NVIDIAMeterObserver meter_pid{pid, ObserverScope::PROCESS};
+
   auto readings_iface = meter.GetReadings()[0];
+  auto readings_proc_iface = meter_pid.GetReadings()[0];
   GPUReadings *readings = dynamic_cast<GPUReadings *>(readings_iface);
+  GPUReadings *readings_proc = dynamic_cast<GPUReadings *>(readings_proc_iface);
 
   // Create table
-  if (ObserverScope::SYSTEM == scope) {
-    std::cout << "OverallUsage(perc),"
-              << "OverallMemory(perc),"
-              << "OverallPower(W),"
-              << "ClockSM(MHz),"
-              << "ClockMEM(MHz)" << std::endl;
-  } else {
-    std::cout << "OverallUsage(perc),OverallMemory(kiB)" << std::endl;
+  auto numgpus = readings->gpu_usage.size();
+  std::cout << "GPUs: " << numgpus << std::endl;
+
+  // System
+  std::cout << "OverallUsage(perc),"
+            << "OverallMemory(perc),"
+            << "OverallPower(W)";
+  for (uint i = 0; i < numgpus; ++i) {
+    std::cout << ",Usage(perc)_" << i << ","
+              << "Mem(perc)_" << i << ","
+              << "Power(W)_" << i << ","
+              << "ClockSM(MHz)_" << i << ","
+              << "ClockMEM(MHz)_" << i;
   }
+  // Process
+  std::cout << ",ProcOverallUsage(perc),"
+            << "ProcOverallMemory(KiB)";
+  for (uint i = 0; i < numgpus; ++i) {
+    std::cout << ",Usage(perc)_" << i << ","
+              << "Mem(perc)_" << i;
+  }
+  std::cout << std::endl;
 
   for (uint i = 0; i < 50; ++i) {
     sleep(kDelay);
@@ -125,19 +141,34 @@ int main(int argc, char **argv) {
       std::cerr << "ERROR: " << res.what() << std::endl;
       break;
     }
-
-    std::cout << readings->overall_usage << ",";
-
-    if (ObserverScope::SYSTEM == scope) {
-      std::cout << readings->overall_memory << ",";
-      std::cout << readings->overall_power << ",";
-      std::cout << readings->clock_speed_sm << ",";
-      std::cout << readings->clock_speed_mem << std::endl;
-    } else {
-      std::cout << readings->overall_memory << std::endl;
+    res = meter_pid.Trigger();
+    if (Status::OK != res.code) {
+      std::cerr << "WARN: " << res.what() << std::endl;
     }
 
-    if (running.load() == 0) break;
+    // System
+    std::cout << readings->overall_usage << ",";
+    std::cout << readings->overall_memory << ",";
+    std::cout << readings->overall_power;
+    for (uint i = 0; i < numgpus; ++i) {
+      std::cout << "," << readings->gpu_usage[i] << ","
+                << readings->gpu_mem_usage[i] << "," << readings->gpu_power[i]
+                << "," << readings->clock_speed_sm[i] << ","
+                << readings->clock_speed_mem[i];
+    }
+    // Process
+    std::cout << "," << readings_proc->overall_usage << ",";
+    std::cout << readings_proc->overall_memory;
+    for (uint i = 0; i < numgpus; ++i) {
+      std::cout << "," << readings_proc->gpu_usage[i] << ","
+                << readings_proc->gpu_mem_usage[i];
+    }
+    std::cout << std::endl;
+
+    if (running.load() == 0) {
+      std::cout << "INFO: Process Stopped" << std::endl;
+      break;
+    }
   }
 
   // Synchronise

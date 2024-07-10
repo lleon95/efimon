@@ -26,14 +26,16 @@ struct GPUReadings : public Readings {
   /** Average memory of all the GPU in KiB. When SYSTEM, it is a percentage */
   float overall_memory;
   /** Average SM clock speed in MHz. Available in SYSTEM */
-  float clock_speed_sm;
+  std::vector<float> clock_speed_sm;
   /** Average MEM clock speed in MHz. Available in SYSTEM */
-  float clock_speed_mem;
-  /** Usage per GPU: Currently unused */
+  std::vector<float> clock_speed_mem;
+  /** Usage per GPU */
   std::vector<float> gpu_usage;
-  /** Power per GPU: Currently unused */
+  /** Memory Usage per GPU in KiB. When SYSTEM, it is a percentage */
+  std::vector<float> gpu_mem_usage;
+  /** Power per GPU */
   std::vector<float> gpu_power;
-  /** Energy per GPU: Currently unused */
+  /** Energy per GPU */
   std::vector<float> gpu_energy;
   /** Destructor to enable the inheritance */
   virtual ~GPUReadings() = default;
