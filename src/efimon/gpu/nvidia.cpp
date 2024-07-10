@@ -7,6 +7,7 @@
  * @copyright Copyright (c) 2024. See License for Licensing
  */
 
+#include <algorithm>
 #include <efimon/gpu/nvidia.hpp>
 #include <efimon/observer.hpp>
 #include <efimon/readings.hpp>
@@ -20,7 +21,7 @@ extern uint64_t GetUptime();
 NVIDIAMeterObserver::NVIDIAMeterObserver(const uint pid,
                                          const ObserverScope scope,
                                          const uint64_t interval)
-    : Observer{}, valid_{false}, device_{0} {
+    : Observer{}, valid_{false}, init_{false} {
   uint64_t type = static_cast<uint64_t>(ObserverType::GPU) |
                   static_cast<uint64_t>(ObserverType::INTERVAL);
   this->pid_ = pid;
@@ -38,6 +39,11 @@ NVIDIAMeterObserver::NVIDIAMeterObserver(const uint pid,
                  "Cannot initialise the NVML using nvmlInit_v2"};
   }
 
+  /* Sets the device equal to device for monitoring all.
+     Otherwise, account the first */
+  this->num_devices_ = this->GetGPUCount();
+  this->device_ = ObserverScope::SYSTEM == scope ? this->num_devices_ : 0;
+
   auto st = this->Reset();
   if (Status::OK != st.code) throw st;
 }
@@ -50,121 +56,185 @@ const std::vector<ObserverCapabilities>& NVIDIAMeterObserver::GetCapabilities()
 Status NVIDIAMeterObserver::Reset() {
   nvmlReturn_t res = NVML_SUCCESS;
 
-  res = nvmlDeviceGetHandleByIndex_v2(this->device_, &this->device_handle_);
-  if (NVML_SUCCESS != res) {
-    return Status{Status::CANNOT_OPEN, "Cannot get the device handle for " +
-                                           std::to_string(this->device_)};
-  }
+  if (!this->init_) {
+    for (uint device = 0; device < this->num_devices_; device++) {
+      res =
+          nvmlDeviceGetHandleByIndex_v2(device, &this->device_handles_[device]);
+      if (NVML_SUCCESS != res) {
+        return Status{Status::CANNOT_OPEN, "Cannot get the device handle for " +
+                                               std::to_string(device)};
+      }
 
-  res = nvmlDeviceSetAccountingMode(this->device_handle_, NVML_FEATURE_ENABLED);
-  if (NVML_SUCCESS != res) {
-    return Status{Status::CONFIGURATION_ERROR,
-                  "Cannot configure the NVML to enable the accounting mode"};
+      res = nvmlDeviceSetAccountingMode(this->device_handles_[device],
+                                        NVML_FEATURE_ENABLED);
+      if (NVML_SUCCESS != res) {
+        return Status{
+            Status::CONFIGURATION_ERROR,
+            "Cannot configure the NVML to enable the accounting mode"};
+      }
+    }
+    this->init_ = true;
+    this->readings_.gpu_usage.resize(this->num_devices_);
+    this->readings_.gpu_mem_usage.resize(this->num_devices_);
+    this->readings_.gpu_power.resize(this->num_devices_);
+    this->readings_.gpu_energy.resize(this->num_devices_);
+    this->readings_.clock_speed_sm.resize(this->num_devices_);
+    this->readings_.clock_speed_mem.resize(this->num_devices_);
   }
 
   this->readings_.timestamp = GetUptime();
   this->readings_.difference = 0;
-  this->prev_energy_ = 0.f;
+  std::fill(this->readings_.gpu_usage.begin(), this->readings_.gpu_usage.end(),
+            0.f);
+  std::fill(this->readings_.gpu_mem_usage.begin(),
+            this->readings_.gpu_mem_usage.end(), 0.f);
+  std::fill(this->readings_.gpu_power.begin(), this->readings_.gpu_power.end(),
+            0.f);
+  std::fill(this->readings_.gpu_energy.begin(),
+            this->readings_.gpu_energy.end(), 0.f);
+  std::fill(this->readings_.clock_speed_sm.begin(),
+            this->readings_.clock_speed_sm.end(), 0.f);
+  std::fill(this->readings_.clock_speed_mem.begin(),
+            this->readings_.clock_speed_mem.end(), 0.f);
+  this->readings_.overall_memory = 0.f;
+  this->readings_.overall_usage = 0.f;
+  this->readings_.overall_power = 0.f;
 
   return Status{};
 }
 
 Status NVIDIAMeterObserver::GetRunningProcesses() {
   nvmlReturn_t res = NVML_SUCCESS;
-  this->running_processes_ = kNumProcessLimit;
+  Status st{};
 
-  res = nvmlDeviceGetComputeRunningProcesses(
-      this->device_handle_, &this->running_processes_, this->process_info_);
-  if (NVML_SUCCESS != res) {
-    return Status{Status::CANNOT_OPEN, "Cannot get the running processes"};
+  for (uint device = 0; device < this->num_devices_; device++) {
+    this->running_processes_[device] = kNumProcessLimit;
+
+    res = nvmlDeviceGetComputeRunningProcesses(
+        this->device_handles_[device], &this->running_processes_[device],
+        this->process_info_[device]);
+    if (NVML_SUCCESS != res) {
+      st = Status{Status::CANNOT_OPEN, "Cannot get the running processes"};
+    }
   }
 
-  return Status{};
+  return st;
 }
 
-Status NVIDIAMeterObserver::GetProcessStats(const uint pid) {
+Status NVIDIAMeterObserver::GetProcessStats(const uint pid, const uint device) {
   bool found = false;
   nvmlReturn_t res = NVML_SUCCESS;
 
-  for (uint i = 0; i < this->running_processes_; ++i) {
-    if (pid == this->process_info_[i].pid) {
+  nvmlAccountingStats_t stats{};
+
+  for (uint i = 0; i < this->running_processes_[device]; ++i) {
+    if (pid == this->process_info_[device][i].pid) {
       found = true;
       break;
     }
   }
 
   if (!found) {
-    return Status{Status::NOT_FOUND, "PID not found"};
+    this->readings_.gpu_usage[device] = 0.f;
+    this->readings_.gpu_mem_usage[device] = 0.f;
+    this->readings_.gpu_power[device] = 0.f;
+    this->readings_.gpu_energy[device] = 0.f;
+    return Status{};
   }
 
-  res = nvmlDeviceGetAccountingStats(this->device_handle_, pid, &this->stats_);
+  res =
+      nvmlDeviceGetAccountingStats(this->device_handles_[device], pid, &stats);
   if (NVML_SUCCESS != res) {
     return Status{Status::CANNOT_OPEN, "Cannot get stats for the given PID"};
   }
 
-  this->readings_.overall_usage =
-      static_cast<float>(this->stats_.gpuUtilization);
-  this->readings_.overall_memory =
-      static_cast<float>(this->stats_.maxMemoryUsage) / 1024;
+  this->readings_.overall_usage += static_cast<float>(stats.gpuUtilization);
+  this->readings_.overall_memory +=
+      static_cast<float>(stats.maxMemoryUsage) / 1024.f;
+  this->readings_.gpu_usage[device] = static_cast<float>(stats.gpuUtilization);
+  this->readings_.gpu_mem_usage[device] =
+      static_cast<float>(stats.maxMemoryUsage) / 1024.f;
 
   return Status{};
 }
 
-Status NVIDIAMeterObserver::GetSystemStats() {
+Status NVIDIAMeterObserver::GetSystemStats(const uint device) {
   nvmlReturn_t res = NVML_SUCCESS;
   uint clock_mhz_sm = 0, clock_mhz_mem = 0;
   Status st{};
-  uint64_t energy_usage;
-  res = nvmlDeviceGetUtilizationRates(this->device_handle_, &this->sys_usage_);
+  unsigned long long energy_usage;  // NOLINT
+  res = nvmlDeviceGetUtilizationRates(this->device_handles_[device],
+                                      &this->sys_usage_);
   if (NVML_SUCCESS != res) {
     return Status{Status::CANNOT_OPEN,
                   "Cannot get GPU system utilisation stats"};
   }
 
-  this->readings_.overall_usage = static_cast<float>(this->sys_usage_.gpu);
-  this->readings_.overall_memory = static_cast<float>(this->sys_usage_.memory);
-
-  auto time = GetUptime();
-  this->readings_.difference = time - this->readings_.timestamp;
-  this->readings_.timestamp = time;
+  this->readings_.gpu_usage[device] = static_cast<float>(this->sys_usage_.gpu);
+  this->readings_.gpu_mem_usage[device] =
+      static_cast<float>(this->sys_usage_.memory);
+  this->readings_.overall_usage += this->readings_.gpu_usage[device];
+  this->readings_.overall_memory += this->readings_.gpu_mem_usage[device];
 
   /* Get Energy in Joules */
-  res =
-      nvmlDeviceGetTotalEnergyConsumption(this->device_handle_, &energy_usage);
+  res = nvmlDeviceGetTotalEnergyConsumption(this->device_handles_[device],
+                                            &energy_usage);
   float new_energy = static_cast<float>(energy_usage);
-  float power_usage = (new_energy - this->prev_energy_) /
+  float power_usage = (new_energy - this->readings_.gpu_energy[device]) /
                       static_cast<float>(this->readings_.difference);
 
-  this->readings_.overall_power = NVML_SUCCESS != res ? -1.f : power_usage;
+  this->readings_.gpu_power[device] = NVML_SUCCESS != res ? 0.f : power_usage;
+  this->readings_.overall_power += this->readings_.gpu_power[device];
 
-  this->prev_energy_ = new_energy;
-  res = nvmlDeviceGetClockInfo(this->device_handle_, NVML_CLOCK_SM,
+  this->readings_.gpu_energy[device] = new_energy;
+  res = nvmlDeviceGetClockInfo(this->device_handles_[device], NVML_CLOCK_SM,
                                &clock_mhz_sm);
   if (NVML_SUCCESS != res) {
     clock_mhz_sm = 0;
   }
 
-  res = nvmlDeviceGetClockInfo(this->device_handle_, NVML_CLOCK_MEM,
+  res = nvmlDeviceGetClockInfo(this->device_handles_[device], NVML_CLOCK_MEM,
                                &clock_mhz_mem);
   if (NVML_SUCCESS != res) {
     clock_mhz_mem = 0;
   }
 
-  this->readings_.clock_speed_sm = static_cast<float>(clock_mhz_sm);
-  this->readings_.clock_speed_mem = static_cast<float>(clock_mhz_mem);
+  this->readings_.clock_speed_sm[device] = static_cast<float>(clock_mhz_sm);
+  this->readings_.clock_speed_mem[device] = static_cast<float>(clock_mhz_mem);
 
   return st;
 }
 
 Status NVIDIAMeterObserver::Trigger() {
-  if (ObserverScope::PROCESS == this->caps_[0].scope) {
-    Status st;
-    st = this->GetRunningProcesses();
-    if (Status::OK != st.code) return st;
-    return this->GetProcessStats(this->pid_);
+  auto time = GetUptime();
+  this->readings_.difference = time - this->readings_.timestamp;
+  this->readings_.timestamp = time;
+  this->readings_.overall_memory = 0.f;
+  this->readings_.overall_usage = 0.f;
+  this->readings_.overall_power = 0.f;
+
+  Status st;
+
+  st = this->GetRunningProcesses();
+  if (Status::OK != st.code) return st;
+
+  if (this->device_ >= this->num_devices_) {
+    for (uint device = 0; device < this->num_devices_; device++) {
+      if (ObserverScope::PROCESS == this->caps_[0].scope) {
+        st = this->GetProcessStats(this->pid_, device);
+      } else {
+        st = this->GetSystemStats(device);
+      }
+    }
   } else {
-    return this->GetSystemStats();
+    if (ObserverScope::PROCESS == this->caps_[0].scope) {
+      st = this->GetProcessStats(this->pid_, this->device_);
+    } else {
+      st = this->GetSystemStats(this->device_);
+    }
   }
+
+  return st;
 }
 
 std::vector<Readings*> NVIDIAMeterObserver::GetReadings() {
@@ -202,5 +272,11 @@ Status NVIDIAMeterObserver::ClearInterval() {
 }
 
 NVIDIAMeterObserver::~NVIDIAMeterObserver() { nvmlShutdown(); }
+
+uint32_t NVIDIAMeterObserver::GetGPUCount() {
+  uint32_t res;
+  nvmlDeviceGetCount_v2(&res);
+  return res;
+}
 
 } /* namespace efimon */
