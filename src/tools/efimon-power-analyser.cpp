@@ -27,6 +27,7 @@
 #include <condition_variable>  // NOLINT
 #include <efimon/arg-parser.hpp>
 #include <efimon/asm-classifier.hpp>
+#include <efimon/gpu/nvidia.hpp>
 #include <efimon/logger/csv.hpp>
 #include <efimon/perf/annotate.hpp>
 #include <efimon/perf/record.hpp>
@@ -187,6 +188,11 @@ int main(int argc, char **argv) {
 #else
   EFM_WARN("RAPL not found.");
 #endif
+#ifdef ENABLE_NVIDIA_NVML
+  EFM_INFO("RAPL found. Enabling");
+#else
+  EFM_WARN("RAPL not found.");
+#endif
 
   // ------------ Argument handling ------------
   if (check_pid) {
@@ -282,6 +288,19 @@ int main(int argc, char **argv) {
                                  true};
   PerfAnnotateObserver perf_annotate{perf_record};
 #endif
+#ifdef ENABLE_NVIDIA_NVML
+  EFM_INFO("Configuring NVIDIA NVML");
+  NVIDIAMeterObserver sys_nvml{pid, ObserverScope::SYSTEM};
+  NVIDIAMeterObserver proc_nvml{pid, ObserverScope::PROCESS};
+  auto nvml_sys_readings_iface = sys_nvml.GetReadings()[0];
+  auto nvml_proc_readings_iface = proc_nvml.GetReadings()[0];
+  GPUReadings *nvml_sys_readings =
+      dynamic_cast<GPUReadings *>(nvml_sys_readings_iface);
+  GPUReadings *nvml_proc_readings =
+      dynamic_cast<GPUReadings *>(nvml_proc_readings_iface);
+  uint gpu_num = nvml_sys_readings->gpu_power.size();
+  EFM_INFO("GPUs detected: " + std::to_string(gpu_num));
+#endif
   ProcStatObserver proc_stat{pid, efimon::ObserverScope::PROCESS, 1};
   ProcStatObserver sys_stat{0, efimon::ObserverScope::SYSTEM, 1};
   auto proc_stat_iface = proc_stat.GetReadings()[0];
@@ -347,6 +366,35 @@ int main(int argc, char **argv) {
     log_table.push_back({name, Logger::FieldType::FLOAT});
   }
 #endif
+#ifdef ENABLE_NVIDIA_NVML
+  // Process Usage
+  for (uint i = 0; i < gpu_num; ++i) {
+    std::string name = "ProcGpuUsage";
+    name += std::to_string(i);
+    log_table.push_back({name, Logger::FieldType::FLOAT});
+    name = "ProcGpuMemUsage";
+    name += std::to_string(i);
+    log_table.push_back({name, Logger::FieldType::FLOAT});
+  }
+  // System Usage
+  for (uint i = 0; i < gpu_num; ++i) {
+    std::string name = "SysGpuUsage";
+    name += std::to_string(i);
+    log_table.push_back({name, Logger::FieldType::FLOAT});
+    name = "SysGpuMemUsage";
+    name += std::to_string(i);
+    log_table.push_back({name, Logger::FieldType::FLOAT});
+    name = "SysGpuPowerUsage";
+    name += std::to_string(i);
+    log_table.push_back({name, Logger::FieldType::FLOAT});
+    name = "SysGpuClockSm";
+    name += std::to_string(i);
+    log_table.push_back({name, Logger::FieldType::FLOAT});
+    name = "SysGpuClockMem";
+    name += std::to_string(i);
+    log_table.push_back({name, Logger::FieldType::FLOAT});
+  }
+#endif
   for (int i = 0; i < cpuinfo.GetNumSockets(); ++i) {
     std::string name = "SocketFreq";
     name += std::to_string(i);
@@ -389,6 +437,10 @@ int main(int argc, char **argv) {
 #endif
 #ifdef ENABLE_IPMI
     EFM_CHECK(ipmi_meter.Trigger(), EFM_WARN_AND_BREAK);
+#endif
+#ifdef ENABLE_NVIDIA_NVML
+    EFM_CHECK(sys_nvml.Trigger(), EFM_WARN_AND_BREAK);
+    EFM_CHECK(proc_nvml.Trigger(), EFM_WARN_AND_BREAK);
 #endif
 
     // Time columns
@@ -487,6 +539,35 @@ int main(int argc, char **argv) {
       std::string name = "FanSpeed";
       name += std::to_string(i);
       LOG_VAL(values, name, fan_readings->fan_speeds.at(i));
+    }
+#endif
+#ifdef ENABLE_NVIDIA_NVML
+    // Process Usage
+    for (uint i = 0; i < gpu_num; ++i) {
+      std::string name = "ProcGpuUsage";
+      name += std::to_string(i);
+      LOG_VAL(values, name, nvml_proc_readings->gpu_usage.at(i));
+      name = "ProcGpuMemUsage";
+      name += std::to_string(i);
+      LOG_VAL(values, name, nvml_proc_readings->gpu_mem_usage.at(i));
+    }
+    // System Usage
+    for (uint i = 0; i < gpu_num; ++i) {
+      std::string name = "SysGpuUsage";
+      name += std::to_string(i);
+      LOG_VAL(values, name, nvml_sys_readings->gpu_usage.at(i));
+      name = "SysGpuMemUsage";
+      name += std::to_string(i);
+      LOG_VAL(values, name, nvml_sys_readings->gpu_mem_usage.at(i));
+      name = "SysGpuPowerUsage";
+      name += std::to_string(i);
+      LOG_VAL(values, name, nvml_sys_readings->gpu_power.at(i));
+      name = "SysGpuClockSm";
+      name += std::to_string(i);
+      LOG_VAL(values, name, nvml_sys_readings->clock_speed_sm.at(i));
+      name = "SysGpuClockMem";
+      name += std::to_string(i);
+      LOG_VAL(values, name, nvml_sys_readings->clock_speed_mem.at(i));
     }
 #endif
     for (int i = 0; i < cpuinfo.GetNumSockets(); ++i) {

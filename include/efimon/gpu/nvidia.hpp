@@ -181,20 +181,10 @@ class NVIDIAMeterObserver : public Observer {
   GPUReadings readings_;
   /** Device handler from the ID: needs to be refreshed every device change */
   nvmlDevice_t device_handles_[kNumMaxHandles];
-  /** Processes: encapsulates the running processes */
-  nvmlProcessInfo_t process_info_[kNumMaxHandles][kNumProcessLimit];
   /** Running processes */
-  uint running_processes_[kNumMaxHandles];
+  nvmlProcessUtilizationSample_t running_processes_[kNumProcessLimit];
   /** System usage */
   nvmlUtilization_t sys_usage_;
-
-  /**
-   * @brief Get the Running Processes
-   *
-   * Get all running processes in GPU
-   * @return Status
-   */
-  Status GetRunningProcesses();
 
   /**
    * @brief Get the Process Stats

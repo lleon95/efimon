@@ -9,13 +9,11 @@
 #ifndef INCLUDE_EFIMON_PROCESS_MANAGER_HPP_
 #define INCLUDE_EFIMON_PROCESS_MANAGER_HPP_
 
+#include <efimon/status.hpp>
 #include <ostream>
 #include <string>
-#include <vector>
-
-#include <efimon/status.hpp>
-
 #include <third-party/pstream.hpp>
+#include <vector>
 
 namespace efimon {
 
@@ -112,6 +110,13 @@ class ProcessManager {
    * @return pid_t PID of the process (if running). Otherwise, it returns -1
    */
   pid_t GetPID();
+
+  /**
+   * @brief Returns the stream
+   *
+   * @return returns the ostream under the hood.
+   */
+  redi::ipstream &GetOStream();
 
   /**
    * @brief Synchronises the execution and waits until completion

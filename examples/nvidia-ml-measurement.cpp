@@ -14,6 +14,7 @@
 #include <efimon/arg-parser.hpp>
 #include <efimon/gpu/nvidia.hpp>
 #include <efimon/process-manager.hpp>
+#include <fstream>
 #include <iostream>
 #include <mutex>  // NOLINT
 #include <string>
@@ -25,6 +26,7 @@ using namespace efimon;  // NOLINT
 static constexpr int kDelay = 1;  // 1 second
 
 std::atomic<int> running{1};
+std::atomic<int> apid{0};
 
 void launch_command(ProcessManager &proc,                  // NOLINT
                     const std::vector<std::string> &args,  // NOLINT
@@ -32,21 +34,48 @@ void launch_command(ProcessManager &proc,                  // NOLINT
   // Create the process and launch it
   Status st;
   uint count = args.size();
+  std::ofstream fs("nvprof.csv");
 
   if (count == 1) {
-    st = proc.Open(args[0]);
+    st = proc.Open(args[0], ProcessManager::Mode::STDERR);
   } else {
-    st = proc.Open(args[0], args);
+    st = proc.Open(args[0], args, ProcessManager::Mode::STDERR);
   }
-
-  cv.notify_one();
 
   if (Status::OK != st.code) {
     running.store(0);
     return;
   }
 
-  proc.Sync();
+  bool last = false;
+  auto &ip = proc.GetOStream();
+  while (Status::OK == st.code) {
+    std::string line;
+
+    if (!last) {
+      while (std::getline(ip, line)) {
+        // Get PID
+        if (line.find("==") == std::string::npos) continue;
+        line = line.substr(2);
+        auto idx = line.find("==");
+        if (idx == std::string::npos) continue;
+        std::string pid_string = line.substr(0, idx);
+        apid.store(std::stoi(pid_string));
+        cv.notify_one();
+
+        // Check if they are the results
+        if (line.find("result") == std::string::npos) continue;
+        last = true;
+        break;
+      }
+    } else {
+      std::cout << "Printing Results" << std::endl;
+      while (std::getline(ip, line)) {
+        fs << line << std::endl;
+      }
+      break;
+    }
+  }
   running.store(0);
 }
 
@@ -64,27 +93,26 @@ int main(int argc, char **argv) {
   auto bit = argparser.GetBegin("-c");
   auto eit = argparser.GetEnd();
   const int count = eit - bit;
-  std::cout << "\tTotal args: " << count << "\n\t";
+  std::cerr << "\tTotal args: " << count << "\n\t";
   for (auto it = bit; it != eit; it++) {
-    std::cout << *it << " ";
+    std::cerr << *it << " ";
   }
-  std::cout << std::endl;
+  std::cerr << std::endl;
 
   // Prepare the user command
-  std::vector<std::string> args_user(count + 6);
+
+  std::vector<std::string> args_user(count + 4);
   args_user[0] = "nvprof";
   args_user[1] = "--print-gpu-trace";
   args_user[2] = "-f";
   args_user[3] = "--csv";
-  args_user[4] = "--log-file";
-  args_user[5] = "nvprof-log.log";
-  std::copy(bit, eit, args_user.begin() + 6);
+  std::copy(bit, eit, args_user.begin() + 4);
 
-  std::cout << "\t";
+  std::cerr << "\t";
   for (auto &i : args_user) {
-    std::cout << i << " ";
+    std::cerr << i << " ";
   }
-  std::cout << std::endl;
+  std::cerr << std::endl;
 
   // Prepare the sync mechanisms
   std::mutex m1;
@@ -99,9 +127,10 @@ int main(int argc, char **argv) {
   {
     std::unique_lock lk(m1);
     cv1.wait_for(lk, std::chrono::seconds(1));
-    std::cout << "\tPID User Command: " << proc1.GetPID() << std::endl;
+    std::cerr << "\tPID User Command: " << proc1.GetPID() << std::endl;
   }
 
+  pid = apid.load();
   NVIDIAMeterObserver meter{pid, ObserverScope::SYSTEM};
   NVIDIAMeterObserver meter_pid{pid, ObserverScope::PROCESS};
 
@@ -112,27 +141,27 @@ int main(int argc, char **argv) {
 
   // Create table
   auto numgpus = readings->gpu_usage.size();
-  std::cout << "GPUs: " << numgpus << std::endl;
+  std::cerr << "GPUs: " << numgpus << std::endl;
 
   // System
-  std::cout << "OverallUsage(perc),"
+  std::cerr << "OverallUsage(perc),"
             << "OverallMemory(perc),"
             << "OverallPower(W)";
   for (uint i = 0; i < numgpus; ++i) {
-    std::cout << ",Usage(perc)_" << i << ","
+    std::cerr << ",Usage(perc)_" << i << ","
               << "Mem(perc)_" << i << ","
               << "Power(W)_" << i << ","
               << "ClockSM(MHz)_" << i << ","
               << "ClockMEM(MHz)_" << i;
   }
   // Process
-  std::cout << ",ProcOverallUsage(perc),"
+  std::cerr << ",ProcOverallUsage(perc),"
             << "ProcOverallMemory(KiB)";
   for (uint i = 0; i < numgpus; ++i) {
-    std::cout << ",Usage(perc)_" << i << ","
+    std::cerr << ",Usage(perc)_" << i << ","
               << "Mem(perc)_" << i;
   }
-  std::cout << std::endl;
+  std::cerr << std::endl;
 
   for (uint i = 0; i < 50; ++i) {
     sleep(kDelay);
@@ -147,26 +176,26 @@ int main(int argc, char **argv) {
     }
 
     // System
-    std::cout << readings->overall_usage << ",";
-    std::cout << readings->overall_memory << ",";
-    std::cout << readings->overall_power;
+    std::cerr << readings->overall_usage << ",";
+    std::cerr << readings->overall_memory << ",";
+    std::cerr << readings->overall_power;
     for (uint i = 0; i < numgpus; ++i) {
-      std::cout << "," << readings->gpu_usage[i] << ","
+      std::cerr << "," << readings->gpu_usage[i] << ","
                 << readings->gpu_mem_usage[i] << "," << readings->gpu_power[i]
                 << "," << readings->clock_speed_sm[i] << ","
                 << readings->clock_speed_mem[i];
     }
     // Process
-    std::cout << "," << readings_proc->overall_usage << ",";
-    std::cout << readings_proc->overall_memory;
+    std::cerr << "," << readings_proc->overall_usage << ",";
+    std::cerr << readings_proc->overall_memory;
     for (uint i = 0; i < numgpus; ++i) {
-      std::cout << "," << readings_proc->gpu_usage[i] << ","
+      std::cerr << "," << readings_proc->gpu_usage[i] << ","
                 << readings_proc->gpu_mem_usage[i];
     }
-    std::cout << std::endl;
+    std::cerr << std::endl;
 
     if (running.load() == 0) {
-      std::cout << "INFO: Process Stopped" << std::endl;
+      std::cerr << "INFO: Process Stopped" << std::endl;
       break;
     }
   }

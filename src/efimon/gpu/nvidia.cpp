@@ -42,7 +42,7 @@ NVIDIAMeterObserver::NVIDIAMeterObserver(const uint pid,
   /* Sets the device equal to device for monitoring all.
      Otherwise, account the first */
   this->num_devices_ = this->GetGPUCount();
-  this->device_ = ObserverScope::SYSTEM == scope ? this->num_devices_ : 0;
+  this->device_ = this->num_devices_;
 
   auto st = this->Reset();
   if (Status::OK != st.code) throw st;
@@ -103,32 +103,22 @@ Status NVIDIAMeterObserver::Reset() {
   return Status{};
 }
 
-Status NVIDIAMeterObserver::GetRunningProcesses() {
-  nvmlReturn_t res = NVML_SUCCESS;
-  Status st{};
-
-  for (uint device = 0; device < this->num_devices_; device++) {
-    this->running_processes_[device] = kNumProcessLimit;
-
-    res = nvmlDeviceGetComputeRunningProcesses(
-        this->device_handles_[device], &this->running_processes_[device],
-        this->process_info_[device]);
-    if (NVML_SUCCESS != res) {
-      st = Status{Status::CANNOT_OPEN, "Cannot get the running processes"};
-    }
-  }
-
-  return st;
-}
-
 Status NVIDIAMeterObserver::GetProcessStats(const uint pid, const uint device) {
   bool found = false;
   nvmlReturn_t res = NVML_SUCCESS;
+  uint size = kNumProcessLimit;
+  uint i = 0;
 
-  nvmlAccountingStats_t stats{};
+  res = nvmlDeviceGetProcessUtilization(this->device_handles_[device],
+                                        this->running_processes_, &size, 0);
+  if (NVML_SUCCESS != res) {
+    return Status{
+        Status::CANNOT_OPEN,
+        "Cannot read process utilisation on device " + std::to_string(device)};
+  }
 
-  for (uint i = 0; i < this->running_processes_[device]; ++i) {
-    if (pid == this->process_info_[device][i].pid) {
+  for (; i < size; ++i) {
+    if (pid == this->running_processes_[i].pid) {
       found = true;
       break;
     }
@@ -142,18 +132,12 @@ Status NVIDIAMeterObserver::GetProcessStats(const uint pid, const uint device) {
     return Status{};
   }
 
-  res =
-      nvmlDeviceGetAccountingStats(this->device_handles_[device], pid, &stats);
-  if (NVML_SUCCESS != res) {
-    return Status{Status::CANNOT_OPEN, "Cannot get stats for the given PID"};
-  }
-
-  this->readings_.overall_usage += static_cast<float>(stats.gpuUtilization);
-  this->readings_.overall_memory +=
-      static_cast<float>(stats.maxMemoryUsage) / 1024.f;
-  this->readings_.gpu_usage[device] = static_cast<float>(stats.gpuUtilization);
-  this->readings_.gpu_mem_usage[device] =
-      static_cast<float>(stats.maxMemoryUsage) / 1024.f;
+  float usage = static_cast<float>(this->running_processes_[i].smUtil);
+  float memory = static_cast<float>(this->running_processes_[i].memUtil) / 10.f;
+  this->readings_.overall_usage += usage;
+  this->readings_.overall_memory += memory;
+  this->readings_.gpu_usage[device] = usage;
+  this->readings_.gpu_mem_usage[device] = memory;
 
   return Status{};
 }
@@ -172,7 +156,7 @@ Status NVIDIAMeterObserver::GetSystemStats(const uint device) {
 
   this->readings_.gpu_usage[device] = static_cast<float>(this->sys_usage_.gpu);
   this->readings_.gpu_mem_usage[device] =
-      static_cast<float>(this->sys_usage_.memory);
+      static_cast<float>(this->sys_usage_.memory) / 10.f;
   this->readings_.overall_usage += this->readings_.gpu_usage[device];
   this->readings_.overall_memory += this->readings_.gpu_mem_usage[device];
 
@@ -206,17 +190,13 @@ Status NVIDIAMeterObserver::GetSystemStats(const uint device) {
 }
 
 Status NVIDIAMeterObserver::Trigger() {
+  Status st{};
   auto time = GetUptime();
   this->readings_.difference = time - this->readings_.timestamp;
   this->readings_.timestamp = time;
   this->readings_.overall_memory = 0.f;
   this->readings_.overall_usage = 0.f;
   this->readings_.overall_power = 0.f;
-
-  Status st;
-
-  st = this->GetRunningProcesses();
-  if (Status::OK != st.code) return st;
 
   if (this->device_ >= this->num_devices_) {
     for (uint device = 0; device < this->num_devices_; device++) {
