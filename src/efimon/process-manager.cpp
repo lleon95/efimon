@@ -7,10 +7,8 @@
  */
 
 #include <efimon/process-manager.hpp>
-
-#include <third-party/pstream.hpp>
-
 #include <iostream>
+#include <third-party/pstream.hpp>
 
 namespace efimon {
 
@@ -113,6 +111,8 @@ Status ProcessManager::Sync(const bool single_line) {
 }
 
 pid_t ProcessManager::GetPID() { return this->ip_.getpid(); }
+
+redi::ipstream &ProcessManager::GetOStream() { return this->ip_; }
 
 Status ProcessManager::Close() {
   this->ip_.close();
