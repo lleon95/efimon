@@ -6,8 +6,11 @@
  * @copyright Copyright (c) 2024. See License for Licensing
  */
 
+#include <json/json.h>
+
 #include <efimon/arg-parser.hpp>
 #include <efimon/logger/macros.hpp>
+#include <sstream>
 #include <zmqpp/zmqpp.hpp>
 
 using namespace efimon;  // NOLINT
@@ -120,19 +123,30 @@ int main(int argc, char **argv) {
   socket.bind(endpoint);
 
   // ----------- Listen forever -----------
+  Json::CharReaderBuilder rbuilder;
+  Json::Value root;
+  rbuilder["collectComments"] = false;
+
   while (true) {
     zmqpp::message message;
-    std::string text;
+    std::string text, errs;
+    std::stringstream streamtext;
 
     // Receive message
     socket.receive(message);
     message >> text;
+    streamtext << text;
 
     // Do some work
-
-    // Reply
-    EFM_INFO("Received: " + text);
-    socket.send("OK");
+    bool ok = Json::parseFromStream(rbuilder, streamtext, &root, &errs);
+    if (!ok) {
+      EFM_WARN("Error while Json: " + errs);
+      socket.send("{\"result\": \"Cannot parse\"}");
+    } else {
+      EFM_INFO("Port: " + root["port"].asString());
+      EFM_INFO("Root: " + root["root"].asString());
+      socket.send("{\"result\": \"OK\"");
+    }
   }
 
   return 0;

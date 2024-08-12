@@ -122,7 +122,7 @@ if enable_zeromq
             ],
             cpp_args : cpp_args,
             include_directories : [project_inc],
-            dependencies: [zeromq_dep, zeromqpp_dep, libefimon_dep],
+            dependencies: [project_deps, libefimon_dep],
             install : false,
   )
 endif

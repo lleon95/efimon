@@ -115,7 +115,20 @@ if zeromq_dep.found() and zeromqpp_dep.found()
   c_args += ['-DENABLE_ZEROMQ']
   cpp_args += ['-DENABLE_ZEROMQ']
 else
-  warning('ZeroMQ not found. It will disabled the efimon-daemon')
+  warning('ZeroMQ not found. It will disabled the efimon-daemon and some examples')
+endif
+
+# Verify if JsonCPP is installed
+enable_jsoncpp = false
+jsoncpp_dep = dependency('jsoncpp', required: false)
+if jsoncpp_dep.found()
+  message('JSONCPP Found. Enabling')
+  enable_jsoncpp = true
+  project_deps += [jsoncpp_dep]
+  c_args += ['-DENABLE_JSONCPP']
+  cpp_args += ['-DENABLE_JSONCPP']
+else
+  warning('JSONCPP not found. It will disabled the efimon-daemon and some examples')
 endif
 
 # -----------------------------------------------------------------------------

@@ -25,14 +25,14 @@ executable('efimon-power-analyser',
           install : true,
 )
 
-if enable_zeromq
+if enable_zeromq and enable_jsoncpp
   executable('efimon-daemon',
             [
               files('efimon-daemon.cpp')
             ],
             cpp_args : cpp_args,
             include_directories : [project_inc],
-            dependencies: [zeromq_dep, zeromqpp_dep, libefimon_dep, dependency('threads')],
+            dependencies: [project_deps, libefimon_dep, dependency('threads')],
             install : true,
   )
 endif
