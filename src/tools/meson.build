@@ -24,3 +24,13 @@ executable('efimon-power-analyser',
           dependencies: [libefimon_dep, dependency('threads')],
           install : true,
 )
+
+executable('efimon-daemon',
+          [
+            files('efimon-daemon.cpp')
+          ],
+          cpp_args : cpp_args,
+          include_directories : [project_inc],
+          dependencies: [libefimon_dep, dependency('threads')],
+          install : true,
+)
