@@ -8,6 +8,7 @@
 
 #include <efimon/arg-parser.hpp>
 #include <efimon/logger/macros.hpp>
+#include <zmqpp/zmqpp.hpp>
 
 using namespace efimon;  // NOLINT
 
@@ -110,6 +111,29 @@ int main(int argc, char **argv) {
   EFM_INFO(std::string("Delay time [secs]: ") + std::to_string(delaytime));
   EFM_INFO(std::string("Output folder: ") + outputpath);
   EFM_INFO(std::string("IPC TCP Port: ") + std::to_string(port));
+
+  // ---------- Initialise ZeroMQ ------------
+  std::string endpoint = "tcp://*:" + std::to_string(port);
+  zmqpp::context context;
+  zmqpp::socket_type type = zmqpp::socket_type::reply;
+  zmqpp::socket socket{context, type};
+  socket.bind(endpoint);
+
+  // ----------- Listen forever -----------
+  while (true) {
+    zmqpp::message message;
+    std::string text;
+
+    // Receive message
+    socket.receive(message);
+    message >> text;
+
+    // Do some work
+
+    // Reply
+    EFM_INFO("Received: " + text);
+    socket.send("OK");
+  }
 
   return 0;
 }
