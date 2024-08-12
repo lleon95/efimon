@@ -25,12 +25,14 @@ executable('efimon-power-analyser',
           install : true,
 )
 
-executable('efimon-daemon',
-          [
-            files('efimon-daemon.cpp')
-          ],
-          cpp_args : cpp_args,
-          include_directories : [project_inc],
-          dependencies: [libefimon_dep, dependency('threads')],
-          install : true,
-)
+if enable_zeromq
+  executable('efimon-daemon',
+            [
+              files('efimon-daemon.cpp')
+            ],
+            cpp_args : cpp_args,
+            include_directories : [project_inc],
+            dependencies: [zeromq_dep, zeromqpp_dep, libefimon_dep, dependency('threads')],
+            install : true,
+  )
+endif

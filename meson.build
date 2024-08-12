@@ -104,6 +104,20 @@ else
   warning('RAPL not found. Disabling code related to Intel RAPL')
 endif
 
+# Verify if ZeroMQ is installed
+enable_zeromq = false
+zeromq_dep = dependency('libzmq', required: false)
+zeromqpp_dep = cpp.find_library('libzmqpp', required: false)
+if zeromq_dep.found() and zeromqpp_dep.found()
+  message('ZeroMQ Found. Enabling')
+  enable_zeromq = true
+  project_deps += [zeromq_dep, zeromqpp_dep]
+  c_args += ['-DENABLE_ZEROMQ']
+  cpp_args += ['-DENABLE_ZEROMQ']
+else
+  warning('ZeroMQ not found. It will disabled the efimon-daemon')
+endif
+
 # -----------------------------------------------------------------------------
 # Developer mode options
 # -----------------------------------------------------------------------------
