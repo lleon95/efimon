@@ -18,6 +18,7 @@ int main(int, char **) {
 
   root["root"] = "Hello World";
   root["port"] = 5550;
+  root["stop"] = true;
 
   // initialize the 0MQ context
   zmqpp::context context;
@@ -30,7 +31,7 @@ int main(int, char **) {
   cout << "Connecting to hello world server…" << endl;
   socket.connect(endpoint);
   int request_nbr;
-  for (request_nbr = 0; request_nbr != 10; request_nbr++) {
+  for (request_nbr = 0; request_nbr != 1; request_nbr++) {
     // send a message
     cout << "Sending Hello " << request_nbr << "…" << endl;
     zmqpp::message message;

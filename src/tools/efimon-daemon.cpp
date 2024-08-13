@@ -7,11 +7,18 @@
  */
 
 #include <json/json.h>
-
+#include <atomic>
 #include <efimon/arg-parser.hpp>
 #include <efimon/logger/macros.hpp>
+#include <efimon/power/ipmi.hpp>
+#include <efimon/power/rapl.hpp>
+#include <efimon/proc/cpuinfo.hpp>
+#include <efimon/proc/stat.hpp>
+#include <mutex>  // NOLINT
 #include <sstream>
 #include <zmqpp/zmqpp.hpp>
+
+#include "macro-handling.hpp"  // NOLINT
 
 using namespace efimon;  // NOLINT
 
@@ -29,6 +36,122 @@ void print_welcome() {
 
 std::string create_monitoring_file(const std::string &path, const uint pid) {
   return path + "-" + std::to_string(pid) + ".csv";
+}
+
+class EfimonAnalyser {
+ public:
+  EfimonAnalyser();
+
+  Status StartSystemThread(const uint delay);
+  Status StopSystemThread();
+
+  virtual ~EfimonAnalyser() = default;
+
+ private:
+  // Running flags
+  std::atomic<bool> sys_running_;
+  // Meter Instances
+  std::shared_ptr<Observer> proc_sys_meter_;
+  std::shared_ptr<Observer> ipmi_meter_;
+  std::shared_ptr<Observer> rapl_meter_;
+
+  // Result instances
+  PSUReadings *psu_readings_;
+  FanReadings *fan_readings_;
+  CPUReadings *cpu_energy_readings_;
+  CPUReadings *cpu_usage_;
+
+  // Refresh functions
+  Status RefreshProcSys();
+  Status RefreshIPMI();
+  Status RefreshRAPL();
+
+  // Workers
+  void SystemStatsWorker(const int delay);
+
+  // Running
+  std::mutex sys_mutex_;
+  std::unique_ptr<std::thread> sys_thread_;
+};
+
+EfimonAnalyser::EfimonAnalyser() : sys_running_{false} {
+  this->ipmi_meter_ = CreateIfEnabled<IPMIMeterObserver, kEnableIpmi>();
+  this->rapl_meter_ = CreateIfEnabled<RAPLMeterObserver, kEnableRapl>();
+  this->proc_sys_meter_ = CreateIfEnabled<ProcStatObserver, true>(
+      0, efimon::ObserverScope::SYSTEM, 1);
+
+  // Clean up results
+  this->psu_readings_ = nullptr;
+  this->fan_readings_ = nullptr;
+  this->cpu_energy_readings_ = nullptr;
+  this->cpu_usage_ = nullptr;
+}
+
+Status EfimonAnalyser::StartSystemThread(const uint delay) {
+  if (nullptr != this->sys_thread_) {
+    return Status{Status::RESOURCE_BUSY, "The thread has already started"};
+  }
+
+  EFM_INFO("Starting System Monitor");
+
+  this->sys_running_.store(true);
+  this->sys_thread_ = std::make_unique<std::thread>(
+      &EfimonAnalyser::SystemStatsWorker, this, delay);
+  return Status{};
+}
+
+Status EfimonAnalyser::StopSystemThread() {
+  if (nullptr == this->sys_thread_) {
+    return Status{Status::NOT_FOUND, "The thread was not running"};
+  }
+
+  EFM_INFO("Stopping System Monitor");
+
+  this->sys_running_.store(false);
+  this->sys_thread_->join();
+  this->sys_thread_.reset();
+  return Status{};
+}
+
+Status EfimonAnalyser::RefreshIPMI() {
+#ifdef ENABLE_IPMI
+  return Status{};
+#else
+  return Status{};
+#endif
+}
+
+Status EfimonAnalyser::RefreshRAPL() {
+#ifdef ENABLE_RAPL
+  return Status{};
+#else
+  return Status{};
+#endif
+}
+
+Status EfimonAnalyser::RefreshProcSys() { return Status{}; }
+
+void EfimonAnalyser::SystemStatsWorker(const int delay) {
+  sys_running_.store(true);
+
+  this->psu_readings_ =
+      GetReadingsIfEnabled<PSUReadings, kEnableIpmi>(this->ipmi_meter_, 0);
+  this->fan_readings_ =
+      GetReadingsIfEnabled<FanReadings, kEnableIpmi>(this->ipmi_meter_, 1);
+  this->cpu_energy_readings_ =
+      GetReadingsIfEnabled<CPUReadings, kEnableRapl>(this->rapl_meter_, 0);
+  this->cpu_usage_ =
+      GetReadingsIfEnabled<CPUReadings, true>(this->proc_sys_meter_, 0);
+
+  while (sys_running_.load()) {
+    EFM_CHECK(RefreshProcSys(), EFM_WARN);
+    EFM_CHECK(RefreshIPMI(), EFM_WARN);
+    EFM_CHECK(RefreshRAPL(), EFM_WARN);
+
+    /* Wait for the next sample */
+    std::this_thread::sleep_for(std::chrono::seconds(delay));
+    EFM_INFO("System Updated");
+  }
 }
 
 int main(int argc, char **argv) {
@@ -122,6 +245,10 @@ int main(int argc, char **argv) {
   zmqpp::socket socket{context, type};
   socket.bind(endpoint);
 
+  // ----------- Start the thread -----------
+  EfimonAnalyser analyser{};
+  analyser.StartSystemThread(delaytime);
+
   // ----------- Listen forever -----------
   Json::CharReaderBuilder rbuilder;
   Json::Value root;
@@ -146,6 +273,9 @@ int main(int argc, char **argv) {
       EFM_INFO("Port: " + root["port"].asString());
       EFM_INFO("Root: " + root["root"].asString());
       socket.send("{\"result\": \"OK\"");
+      if (root.isMember("stop") && root["stop"].asBool()) {
+        analyser.StopSystemThread();
+      }
     }
   }
 
