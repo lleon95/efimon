@@ -30,17 +30,21 @@ int main(int, char **) {
   // open the connection
   cout << "Connecting to hello world server…" << endl;
   socket.connect(endpoint);
-  int request_nbr;
-  for (request_nbr = 0; request_nbr != 1; request_nbr++) {
-    // send a message
-    cout << "Sending Hello " << request_nbr << "…" << endl;
+  while (true) {
     zmqpp::message message;
-    // compose a message from a string and a number
-    message << Json::writeString(wbuilder, root);
+    std::string s;
+    std::getline(cin, s);
+    std::cout << "[Sent Message]: " << s << std::endl;
+    message << s;
     socket.send(message);
     string buffer;
     socket.receive(buffer);
-
-    cout << "Received World " << request_nbr << endl;
+    std::cout << "[Received Message]: " << buffer << std::endl;
   }
+
+  // message << Json::writeString(wbuilder, root);
+
+  // Samples:
+  // {"transaction": "system", "state": true}
+  // {"transaction": "process", "pid": 27374, "state": false}
 }

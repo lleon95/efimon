@@ -27,6 +27,11 @@
     std::cerr << "[ERROR]: " << msg << std::endl; \
     return -1;                                    \
   }
+#define EFM_ERROR_STATUS(msg, code)               \
+  {                                               \
+    std::cerr << "[ERROR]: " << msg << std::endl; \
+    return Status{code, msg};                     \
+  }
 #define EFM_CHECK(inst, func)                \
   {                                          \
     Status s_ = (inst);                      \
