@@ -18,11 +18,8 @@ EfimonAnalyser::EfimonAnalyser() : sys_running_{false} {
   this->proc_sys_meter_ = CreateIfEnabled<ProcStatObserver, true>(
       0, efimon::ObserverScope::SYSTEM, 1);
 
-  // Clean up results
-  this->psu_readings_ = nullptr;
-  this->fan_readings_ = nullptr;
-  this->cpu_energy_readings_ = nullptr;
-  this->cpu_usage_ = nullptr;
+  // Reserve space and clean up results
+  this->readings_.resize(EfimonAnalyser::LAST_READINGS, nullptr);
 }
 
 Status EfimonAnalyser::StartSystemThread(const uint delay) {
@@ -47,7 +44,8 @@ Status EfimonAnalyser::StartWorkerThread(const std::string &name,
   }
 
   EFM_INFO("Creating Process Monitor for PID: " + std::to_string(pid));
-  auto pair = this->proc_workers_.emplace(pid, EfimonWorker{name, pid});
+  auto pair = this->proc_workers_.emplace(
+      pid, std::make_shared<EfimonWorker>(name, pid, this));
 
   if (!pair.second) {
     return Status{
@@ -56,7 +54,7 @@ Status EfimonAnalyser::StartWorkerThread(const std::string &name,
   }
 
   EFM_INFO("Starting Process Monitor for PID: " + std::to_string(pid));
-  return this->proc_workers_[pid].Start(delay);
+  return this->proc_workers_[pid]->Start(delay);
 }
 
 Status EfimonAnalyser::StopSystemThread() {
@@ -81,7 +79,7 @@ Status EfimonAnalyser::StopWorkerThread(const uint pid) {
 
   EFM_INFO("Stopping Worker Monitor for PID: " + std::to_string(pid));
 
-  it->second.Stop();
+  it->second->Stop();
   this->proc_workers_.erase(it);
   return Status{};
 }
@@ -103,6 +101,7 @@ Status EfimonAnalyser::RefreshRAPL() {
 
 Status EfimonAnalyser::RefreshProcSys() {
   std::scoped_lock slock(this->sys_mutex_);
+  return TriggerIfEnabled(this->proc_sys_meter_);
   return Status{};
 }
 
@@ -110,13 +109,13 @@ void EfimonAnalyser::SystemStatsWorker(const int delay) {
   sys_running_.store(true);
 
   this->sys_mutex_.lock();
-  this->psu_readings_ =
+  this->readings_[PSU_ENERGY_READINGS] =
       GetReadingsIfEnabled<PSUReadings, kEnableIpmi>(this->ipmi_meter_, 0);
-  this->fan_readings_ =
+  this->readings_[FAN_READINGS] =
       GetReadingsIfEnabled<FanReadings, kEnableIpmi>(this->ipmi_meter_, 1);
-  this->cpu_energy_readings_ =
+  this->readings_[CPU_ENERGY_READINGS] =
       GetReadingsIfEnabled<CPUReadings, kEnableRapl>(this->rapl_meter_, 0);
-  this->cpu_usage_ =
+  this->readings_[CPU_USAGE_READINGS] =
       GetReadingsIfEnabled<CPUReadings, true>(this->proc_sys_meter_, 0);
   this->sys_mutex_.unlock();
 

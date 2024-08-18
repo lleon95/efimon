@@ -20,13 +20,22 @@
 #include <string>
 #include <thread>  // NOLINT
 #include <unordered_map>
-
-#include "efimon-daemon/efimon-worker.hpp"  // NOLINT
+#include <vector>
 
 namespace efimon {
 
+class EfimonWorker;
+
 class EfimonAnalyser {
  public:
+  enum {
+    PSU_ENERGY_READINGS = 0,
+    FAN_READINGS,
+    CPU_ENERGY_READINGS,
+    CPU_USAGE_READINGS,
+    LAST_READINGS
+  };
+
   EfimonAnalyser();
 
   Status StartSystemThread(const uint delay);
@@ -35,6 +44,9 @@ class EfimonAnalyser {
   Status StartWorkerThread(const std::string &name, const uint pid,
                            const uint delay);
   Status StopWorkerThread(const uint pid);
+
+  template <class T>
+  Status GetReadings(const int index, T &out);  // NOLINT
 
   virtual ~EfimonAnalyser() = default;
 
@@ -47,10 +59,7 @@ class EfimonAnalyser {
   std::shared_ptr<Observer> rapl_meter_;
 
   // Result instances
-  PSUReadings *psu_readings_;
-  FanReadings *fan_readings_;
-  CPUReadings *cpu_energy_readings_;
-  CPUReadings *cpu_usage_;
+  std::vector<Readings *> readings_;
 
   // Refresh functions
   Status RefreshProcSys();
@@ -63,8 +72,24 @@ class EfimonAnalyser {
   // Running
   std::mutex sys_mutex_;
   std::unique_ptr<std::thread> sys_thread_;
-  std::unordered_map<uint, EfimonWorker> proc_workers_;
+  std::unordered_map<uint, std::shared_ptr<EfimonWorker>> proc_workers_;
 };
+
+template <class T>
+Status EfimonAnalyser::GetReadings(const int index, T &out) {  // NOLINT
+  if (index >= EfimonAnalyser::LAST_READINGS || index < 0) {
+    return Status{Status::INVALID_PARAMETER, "The index is out of bound"};
+  }
+
+  T *val = dynamic_cast<T *>(this->readings_[index]);
+  if (val) {
+    out = *val;
+  } else {
+    return Status{Status::NOT_FOUND, "Cannot cast the result"};
+  }
+
+  return Status{};
+}
 
 }  // namespace efimon
 #endif  // SRC_TOOLS_EFIMON_DAEMON_EFIMON_ANALYSER_HPP_

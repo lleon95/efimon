@@ -9,6 +9,7 @@
 #ifndef SRC_TOOLS_MACRO_HANDLING_HPP_
 #define SRC_TOOLS_MACRO_HANDLING_HPP_
 
+#include <efimon/status.hpp>
 #include <memory>
 
 #ifdef ENABLE_IPMI
@@ -43,6 +44,15 @@ T* GetReadingsIfEnabled(std::shared_ptr<I> instance, const int index) {
     return dynamic_cast<T*>(instance->GetReadings().at(index));
   } else {
     return nullptr;
+  }
+}
+
+template <class T>
+efimon::Status TriggerIfEnabled(std::shared_ptr<T> instance) {
+  if (instance) {
+    return instance->Trigger();
+  } else {
+    return efimon::Status{};
   }
 }
 

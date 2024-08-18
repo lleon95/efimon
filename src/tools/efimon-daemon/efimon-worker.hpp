@@ -10,55 +10,61 @@
 #define SRC_TOOLS_EFIMON_DAEMON_EFIMON_WORKER_HPP_
 
 #include <atomic>
+#include <efimon/logger.hpp>
+#include <efimon/logger/csv.hpp>
 #include <efimon/logger/macros.hpp>
+#include <efimon/proc/stat.hpp>
 #include <efimon/status.hpp>
 #include <memory>
+#include <mutex>  // NOLINT
 #include <string>
 #include <thread>  // NOLINT
 #include <utility>
+#include <vector>
 
 namespace efimon {
+
+class EfimonAnalyser;
+
 class EfimonWorker {
  public:
-  EfimonWorker() : name_{}, pid_{0}, running_{false} {};
-  explicit EfimonWorker(EfimonWorker &&worker)
-      : name_{std::move(worker.name_)},
-        pid_{std::move(worker.pid_)},
-        running_{false},
-        thread_{nullptr} {
-    this->running_.store(worker.running_.load());
-    this->thread_.swap(worker.thread_);
-  }
-  EfimonWorker(const std::string &name, const uint pid)
-      : name_{name}, pid_{pid}, running_{false}, thread_{nullptr} {}
-  Status Start(const uint delay) {
-    if (0 == this->pid_) {
-      EFM_ERROR_STATUS(
-          "Invalid instance of the worker. Are you using default constructor?",
-          Status::CANNOT_OPEN);
-    }
-    EFM_INFO("Process Monitor Start for PID: " + std::to_string(this->pid_) +
-             " with delay: " + std::to_string(delay));
-    return Status{};
-  }
-  Status Stop() {
-    if (0 == this->pid_) {
-      EFM_ERROR_STATUS(
-          "Invalid instance of the worker. Are you using default constructor?",
-          Status::CANNOT_OPEN);
-    }
-    EFM_INFO("Process Monitor Stopped for PID: " + std::to_string(this->pid_));
-    return Status{};
-  }
-  virtual ~EfimonWorker() = default;
+  EfimonWorker();
+  explicit EfimonWorker(EfimonWorker &&worker);
+  EfimonWorker(const std::string &name, const uint pid,
+               EfimonAnalyser *analyser);
+
+  Status Start(const uint delay);
+  Status Stop();
+
+  virtual ~EfimonWorker();
 
  private:
   std::string name_;
+
+  // Running variables
   uint pid_;
   std::atomic<bool> running_;
+  EfimonAnalyser *analyser_;
   std::unique_ptr<std::thread> thread_;
+  std::mutex mutex_;
 
+  // Meter Instances
+  std::shared_ptr<Observer> proc_meter_;
+  std::shared_ptr<Observer> perf_meter_;
+
+  // Result instances
+  CPUReadings *cpu_usage_;
+
+  // Refresh functions
   Status RefreshProcStat();
+
+  // Auxiliary logging functions
+  std::vector<Logger::MapTuple> log_table_;
+  Status CreateLogTable();
+  Status LogReadings(CSVLogger &logger);  // NOLINT
+
+  // Workers
+  void ProcStatsWorker(const uint delay);
 };
 }  // namespace efimon
 

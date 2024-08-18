@@ -24,6 +24,7 @@ static constexpr uint kDefFrequency = 100;        // 100 Hz
 static constexpr uint kDefaultSampleLimit = 100;  // 100 samples
 static constexpr char kDefaultOutputPath[] = "/tmp";
 static constexpr uint kPort = 5550;
+static uint logcounter = 0;
 
 void print_welcome() {
   std::cout << "-----------------------------------------------------------\n";
@@ -32,7 +33,9 @@ void print_welcome() {
 }
 
 std::string create_monitoring_file(const std::string &path, const uint pid) {
-  return path + "-" + std::to_string(pid) + ".csv";
+  logcounter++;
+  return path + "/efimon-" + std::to_string(pid) + "-" +
+         std::to_string(logcounter) + ".csv";
 }
 
 int main(int argc, char **argv) {
@@ -176,8 +179,8 @@ int main(int argc, char **argv) {
         uint pid = root["pid"].asUInt();
         uint delay =
             root.isMember("delay") ? root["delay"].asUInt() : delaytime;
-        std::string name =
-            root.isMember("name") ? root["name"].asString() : "Unknown";
+        std::string name = create_monitoring_file(outputpath, pid);
+        name = root.isMember("name") ? root["name"].asString() : name;
         EFM_INFO("Setting Process Monitor to PID " + std::to_string(pid) +
                  " to: " + std::to_string(state) +
                  " with delay: " + std::to_string(delay) + " secs");
