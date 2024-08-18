@@ -28,7 +28,11 @@ executable('efimon-power-analyser',
 if enable_zeromq and enable_jsoncpp
   executable('efimon-daemon',
             [
-              files('efimon-daemon.cpp')
+              files(
+                'efimon-daemon.cpp',
+                'efimon-daemon/efimon-analyser.cpp',
+                'efimon-daemon/efimon-worker.cpp',
+              )
             ],
             cpp_args : cpp_args,
             include_directories : [project_inc],
