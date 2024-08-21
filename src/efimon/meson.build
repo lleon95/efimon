@@ -8,7 +8,6 @@
 lib_efimon_sources += [
   files('arg-parser.cpp'),
   files('proc/io.cpp'),
-  files('proc/list.cpp'),
   files('proc/meminfo.cpp'),
   files('proc/net.cpp'),
   files('proc/stat.cpp'),
@@ -20,6 +19,12 @@ lib_efimon_sources += [
   files('process-manager.cpp'),
   files('logger/csv.cpp'),
 ]
+
+if enable_libprocps
+  lib_efimon_sources += [
+    files('proc/list.cpp'),
+  ]
+endif
 
 if enable_rapl
   lib_efimon_sources += [

@@ -29,8 +29,15 @@ cpp_args = ['-Werror']
 
 # Find proc library
 cpp = meson.get_compiler('cpp')
-libprocps_dep = cpp.find_library('libprocps', required: true)
-project_deps += libprocps_dep
+libprocps1_dep = cpp.find_library('libprocps', required: false)
+enable_libprocps = false
+if libprocps1_dep.found()
+  message('libprocps1 found. Proceeding')
+  project_deps += libprocps1_dep
+  enable_libprocps = true
+else
+  warning('libprocps not found. Listers will not be available')
+endif
 
 # Find SQLite3
 enable_sql = false
@@ -107,11 +114,10 @@ endif
 # Verify if ZeroMQ is installed
 enable_zeromq = false
 zeromq_dep = dependency('libzmq', required: false)
-zeromqpp_dep = cpp.find_library('libzmqpp', required: false)
-if zeromq_dep.found() and zeromqpp_dep.found()
+if zeromq_dep.found()
   message('ZeroMQ Found. Enabling')
   enable_zeromq = true
-  project_deps += [zeromq_dep, zeromqpp_dep]
+  project_deps += [zeromq_dep]
   c_args += ['-DENABLE_ZEROMQ']
   cpp_args += ['-DENABLE_ZEROMQ']
 else

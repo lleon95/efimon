@@ -36,7 +36,7 @@ First, it is important to recall that this is a Linux library. It requires the f
 * Intel RAPL
 * Free IPMI
 
-On Fedora 16, you can install some of these dependencies using:
+On Fedora 40, you can install some of these dependencies using:
 
 ```bash
 # ProcPS
@@ -45,6 +45,10 @@ yum install procps-ng-devel.x86_64 procps-ng.x86_64
 yum install perf
 # SQLite
 yum install libsqlite3x.x86_64 libsqlite3x-devel.x86_64
+# ZeroMQ
+yum install cppzmq-devel.x86_64
+# JsonCPP
+yum install jsoncpp-devel.x86_64
 ```
 
 On Ubuntu 20.04:
@@ -56,6 +60,10 @@ apt install libprocps-dev libprocps8
 apt install linux-tools-common linux-tools-generic
 # SQLite
 apt install libsqlite3-dev libsqlite3-0
+# ZeroMQ
+apt install libzmqpp4 libzmqpp-dev
+# JsonCPP
+apt install libjsoncpp-dev
 ```
 
 **Optional**

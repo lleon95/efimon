@@ -5,15 +5,17 @@
 # Author: Luis G. Leon Vega <luis.leon@ieee.org>
 #
 
-executable('process-tracking',
-           [
-             files('process-tracking.cpp')
-           ],
-           cpp_args : cpp_args,
-           include_directories : [project_inc],
-           dependencies: [libefimon_dep],
-           install : false,
-)
+if enable_libprocps
+  executable('process-tracking',
+            [
+              files('process-tracking.cpp')
+            ],
+            cpp_args : cpp_args,
+            include_directories : [project_inc],
+            dependencies: [libefimon_dep],
+            install : false,
+  )
+endif
 
 if enable_sql
   executable('sqlite-testing',
@@ -115,7 +117,7 @@ executable('csv-testing',
           install : false,
 )
 
-if enable_zeromq
+if enable_zeromq and enable_jsoncpp
   executable('zeromq-sender',
             [
               files('zeromq-sender.cpp')
