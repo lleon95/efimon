@@ -6,12 +6,14 @@
  * @copyright Copyright (c) 2024. See License for Licensing
  */
 
+#include "efimon-daemon/efimon-worker.hpp"  // NOLINT
+
 #include <efimon/logger/csv.hpp>
+#include <efimon/logger/macros.hpp>
 #include <efimon/proc/stat.hpp>
 #include <unordered_map>
 
 #include "efimon-daemon/efimon-analyser.hpp"  // NOLINT
-#include "efimon-daemon/efimon-worker.hpp"    // NOLINT
 #include "macro-handling.hpp"                 // NOLINT
 namespace efimon {
 
@@ -124,6 +126,36 @@ Status EfimonWorker::CreateLogTable() {
   // System and Process CPU usage
   this->log_table_.push_back({"SystemCpuUsage", Logger::FieldType::FLOAT});
   this->log_table_.push_back({"ProcessCpuUsage", Logger::FieldType::FLOAT});
+  // Add the IPMI values
+#ifdef ENABLE_IPMI
+  PSUReadings psu_readings;
+  FanReadings fan_readings;
+  this->analyser_->GetReadings(0, psu_readings);
+  this->analyser_->GetReadings(1, fan_readings);
+  uint psu_num = psu_readings.psu_max_power.size();
+  uint fan_num = fan_readings.fan_speeds.size();
+  for (uint i = 0; i < psu_num; ++i) {
+    std::string name = "PSUPower";
+    name += std::to_string(i);
+    this->log_table_.push_back({name, Logger::FieldType::FLOAT});
+  }
+  for (uint i = 0; i < fan_num; ++i) {
+    std::string name = "FanSpeed";
+    name += std::to_string(i);
+    this->log_table_.push_back({name, Logger::FieldType::FLOAT});
+  }
+#endif
+  // Add the RAPL values
+#ifdef ENABLE_RAPL
+  CPUReadings rapl_readings;
+  this->analyser_->GetReadings(2, rapl_readings);
+  uint socket_num = rapl_readings.socket_power.size();
+  for (uint i = 0; i < socket_num; ++i) {
+    std::string name = "SocketPower";
+    name += std::to_string(i);
+    this->log_table_.push_back({name, Logger::FieldType::FLOAT});
+  }
+#endif
 
   // TODO(lleon): Add the rest
 
@@ -136,8 +168,8 @@ Status EfimonWorker::LogReadings(CSVLogger &logger) {  // NOLINT
     return Status{Status::NOT_FOUND, "Cannot find the CPU Usage"};
   }
 
-  CPUReadings sys_cpu_readings;
-  Status status_readings = this->analyser_->GetReadings(3, sys_cpu_readings);
+  CPUReadings sys_cpu_readings{};
+  EFM_CHECK(this->analyser_->GetReadings(3, sys_cpu_readings), EFM_WARN);
 
   auto timestamp = this->cpu_usage_->timestamp;
   auto difference = this->cpu_usage_->difference;
@@ -150,6 +182,38 @@ Status EfimonWorker::LogReadings(CSVLogger &logger) {  // NOLINT
   LOG_VAL(values, "SystemCpuUsage", sys_usage);
   LOG_VAL(values, "ProcessCpuUsage", proc_usage);
   LOG_VAL(values, "TimeDifference", difference);
+
+#ifdef ENABLE_IPMI
+  PSUReadings psu_readings{};
+  FanReadings fan_readings{};
+
+  EFM_CHECK(this->analyser_->GetReadings(0, psu_readings), EFM_WARN);
+  EFM_CHECK(this->analyser_->GetReadings(1, fan_readings), EFM_WARN);
+  uint psu_num = psu_readings.psu_max_power.size();
+  uint fan_num = fan_readings.fan_speeds.size();
+
+  for (uint i = 0; i < psu_num; ++i) {
+    std::string name = "PSUPower";
+    name += std::to_string(i);
+    LOG_VAL(values, name, psu_readings.psu_power.at(i));
+  }
+  for (uint i = 0; i < fan_num; ++i) {
+    std::string name = "FanSpeed";
+    name += std::to_string(i);
+    LOG_VAL(values, name, fan_readings.fan_speeds.at(i));
+  }
+#endif
+
+#ifdef ENABLE_RAPL
+  CPUReadings rapl_readings{};
+  EFM_CHECK(this->analyser_->GetReadings(2, rapl_readings), EFM_WARN);
+  uint socket_num = rapl_readings.socket_power.size();
+  for (uint i = 0; i < socket_num; ++i) {
+    std::string name = "SocketPower";
+    name += std::to_string(i);
+    LOG_VAL(values, name, rapl_readings.socket_power.at(i));
+  }
+#endif
 
   return logger.InsertRow(values);
 }

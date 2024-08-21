@@ -7,8 +7,9 @@
  */
 
 #include "efimon-daemon/efimon-analyser.hpp"  // NOLINT
-#include "efimon-daemon/efimon-worker.hpp"    // NOLINT
-#include "macro-handling.hpp"                 // NOLINT
+
+#include "efimon-daemon/efimon-worker.hpp"  // NOLINT
+#include "macro-handling.hpp"               // NOLINT
 
 namespace efimon {
 
@@ -85,18 +86,13 @@ Status EfimonAnalyser::StopWorkerThread(const uint pid) {
 }
 
 Status EfimonAnalyser::RefreshIPMI() {
-#ifdef ENABLE_IPMI
   std::scoped_lock slock(this->sys_mutex_);
-#endif
-  return Status{};
+  return TriggerIfEnabled(this->ipmi_meter_);
 }
 
 Status EfimonAnalyser::RefreshRAPL() {
-#ifdef ENABLE_RAPL
   std::scoped_lock slock(this->sys_mutex_);
-  return Status{};
-#endif
-  return Status{};
+  return TriggerIfEnabled(this->rapl_meter_);
 }
 
 Status EfimonAnalyser::RefreshProcSys() {

@@ -77,6 +77,7 @@ class EfimonAnalyser {
 
 template <class T>
 Status EfimonAnalyser::GetReadings(const int index, T &out) {  // NOLINT
+  std::scoped_lock slock(this->sys_mutex_);
   if (index >= EfimonAnalyser::LAST_READINGS || index < 0) {
     return Status{Status::INVALID_PARAMETER, "The index is out of bound"};
   }
