@@ -7,11 +7,12 @@
  */
 
 #include <json/json.h>
+
 #include <efimon/arg-parser.hpp>
 #include <efimon/logger/macros.hpp>
 #include <efimon/proc/cpuinfo.hpp>
 #include <sstream>
-#include <zmqpp/zmqpp.hpp>
+#include <zmq.hpp>
 
 #include "efimon-daemon/efimon-analyser.hpp"  // NOLINT
 #include "efimon-daemon/efimon-worker.hpp"    // NOLINT
@@ -124,9 +125,9 @@ int main(int argc, char **argv) {
 
   // ---------- Initialise ZeroMQ ------------
   std::string endpoint = "tcp://*:" + std::to_string(port);
-  zmqpp::context context;
-  zmqpp::socket_type type = zmqpp::socket_type::reply;
-  zmqpp::socket socket{context, type};
+  zmq::context_t context;
+  auto type = zmq::socket_type::rep;
+  zmq::socket_t socket{context, type};
   socket.bind(endpoint);
 
   // ----------- Start the thread -----------
@@ -139,27 +140,31 @@ int main(int argc, char **argv) {
   rbuilder["collectComments"] = false;
 
   while (true) {
-    zmqpp::message message;
+    zmq::message_t message;
     std::string text, errs;
     std::stringstream streamtext;
 
     // Receive message
-    socket.receive(message);
-    message >> text;
+    auto res = socket.recv(message, zmq::recv_flags::none);
+    res.reset();  // TODO(lleon): improve this handling
+    text = message.to_string();
     streamtext << text;
 
     // Do some work
     bool ok = Json::parseFromStream(rbuilder, streamtext, &root, &errs);
     if (!ok) {
       EFM_WARN("Error while Json: " + errs);
-      socket.send("{\"result\": \"Cannot parse\"}");
+      zmq::message_t reply(std::string("{\"result\": \"Cannot parse\"}"));
+      socket.send(reply, zmq::send_flags::none);
     } else {
       Status status{Status::OK, "OK"};
 
       // Check transaction
       if (!root.isMember("transaction")) {
         EFM_WARN("'transaction' member does not exist");
-        socket.send("{\"result\": \"Cannot find transaction\"}");
+        zmq::message_t reply(
+            std::string("{\"result\": \"Cannot find transaction\"}"));
+        socket.send(reply, zmq::send_flags::none);
       }
       std::string transaction = root["transaction"].asString();
       EFM_INFO("Transaction: " + transaction);
@@ -197,7 +202,9 @@ int main(int argc, char **argv) {
         EFM_WARN(status.what());
       }
 
-      socket.send("{\"result\": \"" + std::string(status.what()) + "\"}");
+      zmq::message_t reply("{\"result\": \"" + std::string(status.what()) +
+                           "\"}");
+      socket.send(reply, zmq::send_flags::none);
     }
   }
 

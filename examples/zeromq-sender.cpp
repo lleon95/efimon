@@ -6,7 +6,7 @@
 
 #include <iostream>
 #include <string>
-#include <zmqpp/zmqpp.hpp>
+#include <zmq.hpp>
 
 using namespace std;  // NOLINT
 
@@ -21,25 +21,25 @@ int main(int, char **) {
   root["stop"] = true;
 
   // initialize the 0MQ context
-  zmqpp::context context;
+  zmq::context_t context;
 
   // generate a push socket
-  zmqpp::socket_type type = zmqpp::socket_type::req;
-  zmqpp::socket socket(context, type);
+  auto type = zmq::socket_type::req;
+  zmq::socket_t socket(context, type);
 
   // open the connection
   cout << "Connecting to hello world server…" << endl;
   socket.connect(endpoint);
   while (true) {
-    zmqpp::message message;
     std::string s;
     std::getline(cin, s);
     std::cout << "[Sent Message]: " << s << std::endl;
-    message << s;
-    socket.send(message);
-    string buffer;
-    socket.receive(buffer);
-    std::cout << "[Received Message]: " << buffer << std::endl;
+    zmq::message_t message(s);
+    socket.send(message, zmq::send_flags::none);
+    zmq::message_t buffer;
+    auto res = socket.recv(buffer, zmq::recv_flags::none);
+    std::cout << "[Received Message with status " << res.value()
+              << "]: " << buffer.str() << std::endl;
   }
 
   // message << Json::writeString(wbuilder, root);
