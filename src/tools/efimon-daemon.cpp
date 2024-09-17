@@ -184,13 +184,16 @@ int main(int argc, char **argv) {
         uint pid = root["pid"].asUInt();
         uint delay =
             root.isMember("delay") ? root["delay"].asUInt() : delaytime;
+        bool perf = root.isMember("perf") ? root["perf"].asBool() : false;
+        bool freq =
+            root.isMember("frequency") ? root["frequency"].asBool() : 1000;
         std::string name = create_monitoring_file(outputpath, pid);
         name = root.isMember("name") ? root["name"].asString() : name;
         EFM_INFO("Setting Process Monitor to PID " + std::to_string(pid) +
                  " to: " + std::to_string(state) +
                  " with delay: " + std::to_string(delay) + " secs");
         if (state) {
-          status = analyser.StartWorkerThread(name, pid, delay);
+          status = analyser.StartWorkerThread(name, pid, delay, perf, freq);
         } else {
           status = analyser.StopWorkerThread(pid);
         }

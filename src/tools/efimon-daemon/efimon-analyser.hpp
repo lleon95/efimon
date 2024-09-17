@@ -42,7 +42,8 @@ class EfimonAnalyser {
   Status StopSystemThread();
 
   Status StartWorkerThread(const std::string &name, const uint pid,
-                           const uint delay);
+                           const uint delay, const bool enable_perf = false,
+                           const uint freq = 0);
   Status StopWorkerThread(const uint pid);
 
   template <class T>

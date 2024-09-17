@@ -42,6 +42,11 @@
     Status s_ = (inst);                           \
     if (s_.code != Status::OK) EFM_ERROR(s_.msg); \
   }
+#define EFM_CHECK_STATUS(inst)            \
+  {                                       \
+    Status s_ = (inst);                   \
+    if (s_.code != Status::OK) return s_; \
+  }
 #define EFM_RES std::cout
 #define LOG_VAL(vars, name, val)   \
   (vars)[name] = std::make_shared< \

@@ -10,6 +10,8 @@
 
 #include <efimon/logger/csv.hpp>
 #include <efimon/logger/macros.hpp>
+#include <efimon/perf/annotate.hpp>
+#include <efimon/perf/record.hpp>
 #include <efimon/proc/stat.hpp>
 #include <unordered_map>
 
@@ -18,7 +20,14 @@
 namespace efimon {
 
 EfimonWorker::EfimonWorker()
-    : name_{}, pid_{0}, running_{false}, analyser_{nullptr}, thread_{nullptr} {}
+    : name_{},
+      pid_{0},
+      running_{false},
+      analyser_{nullptr},
+      thread_{nullptr},
+      proc_meter_{nullptr},
+      perf_record_meter_{nullptr},
+      perf_annotate_meter_{nullptr} {}
 
 EfimonWorker::EfimonWorker(const std::string &name, const uint pid,
                            EfimonAnalyser *analyser)
@@ -26,21 +35,28 @@ EfimonWorker::EfimonWorker(const std::string &name, const uint pid,
       pid_{pid},
       running_{false},
       analyser_{analyser},
-      thread_{nullptr} {}
+      thread_{nullptr},
+      proc_meter_{nullptr},
+      perf_record_meter_{nullptr},
+      perf_annotate_meter_{nullptr} {}
 
 EfimonWorker::EfimonWorker(EfimonWorker &&worker)
     : name_{std::move(worker.name_)},
       pid_{std::move(worker.pid_)},
       running_{false},
       analyser_{std::move(worker.analyser_)},
-      thread_{nullptr} {
+      thread_{nullptr},
+      proc_meter_{std::move(worker.proc_meter_)},
+      perf_record_meter_{std::move(worker.perf_record_meter_)},
+      perf_annotate_meter_{std::move(worker.perf_annotate_meter_)} {
   this->running_.store(worker.running_.load());
   this->thread_.swap(worker.thread_);
 }
 
 EfimonWorker::~EfimonWorker() { this->Stop(); }
 
-Status EfimonWorker::Start(const uint delay) {
+Status EfimonWorker::Start(const uint delay, const bool enable_perf,
+                           const uint freq) {
   if (0 == this->pid_) {
     EFM_ERROR_STATUS(
         "Invalid instance of the worker. Are you using default constructor?",
@@ -52,6 +68,18 @@ Status EfimonWorker::Start(const uint delay) {
   // Create observers
   this->proc_meter_ = CreateIfEnabled<ProcStatObserver, true>(
       this->pid_, efimon::ObserverScope::PROCESS, delay);
+  if (enable_perf) {
+#ifdef ENABLE_PERF
+    auto perf_record_meter_iface = std::make_shared<PerfRecordObserver>(
+        this->pid_, efimon::ObserverScope::PROCESS, delay, freq, true);
+    this->perf_record_meter_ = perf_record_meter_iface;
+    this->perf_annotate_meter_ =
+        std::make_shared<PerfAnnotateObserver>(*perf_record_meter_iface);
+#else
+    this->perf_record_meter_ = nullptr;
+    this->perf_annotate_meter_ = nullptr;
+#endif
+  }
 
   this->thread_ = std::make_unique<std::thread>(&EfimonWorker::ProcStatsWorker,
                                                 this, delay);
@@ -74,20 +102,30 @@ Status EfimonWorker::Stop() {
 
   // Destroy observers
   this->proc_meter_.reset();
-  this->perf_meter_.reset();
+  this->perf_record_meter_.reset();
+  this->perf_annotate_meter_.reset();
   this->cpu_usage_ = nullptr;
+  this->instructions_samples_ = nullptr;
 
   return Status{};
 }
 
 void EfimonWorker::ProcStatsWorker(const uint delay) {
   bool first_sample = true;
+  bool enabled_perf = false;
   this->running_.store(true);
 
   this->mutex_.lock();
   this->cpu_usage_ =
       GetReadingsIfEnabled<CPUReadings, true>(this->proc_meter_, 0);
   this->log_table_.clear();
+
+  enabled_perf = this->perf_annotate_meter_ != nullptr;
+  if (enabled_perf) {
+    this->instructions_samples_ =
+        GetReadingsIfEnabled<InstructionReadings, true>(
+            this->perf_annotate_meter_, 0);
+  }
   this->mutex_.unlock();
 
   EFM_CHECK(this->CreateLogTable(), EFM_WARN);
@@ -105,8 +143,10 @@ void EfimonWorker::ProcStatsWorker(const uint delay) {
       EFM_CHECK(LogReadings(logger), EFM_WARN_AND_BREAK);
     }
 
-    // Wait for the next sample
-    std::this_thread::sleep_for(std::chrono::seconds(delay));
+    // Wait for the next sample. Perf is a blocking call
+    if (enabled_perf) {
+      std::this_thread::sleep_for(std::chrono::seconds(delay));
+    }
     EFM_INFO("Process with PID " + std::to_string(this->pid_) + " updated");
   }
 
@@ -115,7 +155,10 @@ void EfimonWorker::ProcStatsWorker(const uint delay) {
 
 Status EfimonWorker::RefreshProcStat() {
   std::scoped_lock slock(this->mutex_);
-  return TriggerIfEnabled(this->proc_meter_);
+  EFM_CHECK_STATUS(TriggerIfEnabled(this->proc_meter_));
+  EFM_CHECK_STATUS(TriggerIfEnabled(this->perf_record_meter_));
+  EFM_CHECK_STATUS(TriggerIfEnabled(this->perf_annotate_meter_));
+  return Status{};
 }
 
 Status EfimonWorker::CreateLogTable() {
@@ -157,7 +200,42 @@ Status EfimonWorker::CreateLogTable() {
   }
 #endif
 
-  // TODO(lleon): Add the rest
+#ifdef ENABLE_PERF
+  if (this->perf_record_meter_ && this->perf_annotate_meter_) {
+    for (uint itype = 0;
+         itype <= static_cast<uint>(assembly::InstructionType::UNCLASSIFIED);
+         ++itype) {
+      auto type = static_cast<assembly::InstructionType>(itype);
+      std::string stype = AsmClassifier::TypeString(type);
+      for (uint ftype = 0;
+           ftype < static_cast<uint>(assembly::InstructionFamily::OTHER);
+           ++ftype) {
+        auto family = static_cast<assembly::InstructionFamily>(ftype);
+        std::string sfamily = AsmClassifier::FamilyString(family);
+        if (family == assembly::InstructionFamily::MEMORY ||
+            family == assembly::InstructionFamily::ARITHMETIC ||
+            family == assembly::InstructionFamily::LOGIC) {
+          this->log_table_.push_back(
+              {std::string("ProbabilityRegister") + stype + sfamily,
+               Logger::FieldType::FLOAT});
+          this->log_table_.push_back(
+              {std::string("ProbabilityMemLoad") + stype + sfamily,
+               Logger::FieldType::FLOAT});
+          this->log_table_.push_back(
+              {std::string("ProbabilityMemStore") + stype + sfamily,
+               Logger::FieldType::FLOAT});
+          this->log_table_.push_back(
+              {std::string("ProbabilityMemUpdate") + stype + sfamily,
+               Logger::FieldType::FLOAT});
+        } else {
+          std::string name = "Probability";
+          name += stype + sfamily;
+          this->log_table_.push_back({name, Logger::FieldType::FLOAT});
+        }
+      }
+    }
+  }
+#endif
 
   return Status{};
 }
@@ -215,6 +293,69 @@ Status EfimonWorker::LogReadings(CSVLogger &logger) {  // NOLINT
   }
 #endif
 
+#ifdef ENABLE_PERF
+  if (this->perf_record_meter_ && this->perf_annotate_meter_) {
+    for (uint itype = 0;
+         itype <= static_cast<uint>(assembly::InstructionType::UNCLASSIFIED);
+         ++itype) {
+      for (uint ftype = 0;
+           ftype < static_cast<uint>(assembly::InstructionFamily::OTHER);
+           ++ftype) {
+        auto type = static_cast<assembly::InstructionType>(itype);
+        std::string stype = AsmClassifier::TypeString(type);
+        auto family = static_cast<assembly::InstructionFamily>(ftype);
+        std::string sfamily = AsmClassifier::FamilyString(family);
+        auto tit = instructions_samples_->classification.find(type);
+
+        if (family == assembly::InstructionFamily::MEMORY ||
+            family == assembly::InstructionFamily::ARITHMETIC ||
+            family == assembly::InstructionFamily::LOGIC) {
+          std::array<float, 4> probs;
+          probs.fill(0.f);
+
+          if (instructions_samples_->classification.end() != tit) {
+            auto fit = tit->second.find(family);
+            if (tit->second.end() != fit) {
+              for (auto origit = fit->second.begin();
+                   origit != fit->second.end(); origit++) {
+                auto pairorigin =
+                    AsmClassifier::OriginDecomposed(origit->first);
+                if (pairorigin.first == assembly::DataOrigin::MEMORY &&
+                    pairorigin.second == assembly::DataOrigin::MEMORY) {
+                  std::string fieldname = "ProbabilityMemUpdate";
+                  LOG_VAL(values, fieldname + stype + sfamily, origit->second);
+                } else if (pairorigin.first == assembly::DataOrigin::MEMORY) {
+                  std::string fieldname = "ProbabilityMemLoad";
+                  LOG_VAL(values, fieldname + stype + sfamily, origit->second);
+                } else if (pairorigin.second == assembly::DataOrigin::MEMORY) {
+                  std::string fieldname = "ProbabilityMemStore";
+                  LOG_VAL(values, fieldname + stype + sfamily, origit->second);
+                } else {
+                  std::string fieldname = "ProbabilityRegister";
+                  LOG_VAL(values, fieldname + stype + sfamily, origit->second);
+                }
+              }
+            }
+          }
+        } else {
+          float probres = 0.f;
+          if (instructions_samples_->classification.end() != tit) {
+            auto fit = tit->second.find(family);
+            if (tit->second.end() != fit) {
+              for (auto origit = fit->second.begin();
+                   origit != fit->second.end(); origit++) {
+                probres += origit->second;
+              }
+            }
+          }
+          std::string name = "Probability";
+          name += stype + sfamily;
+          LOG_VAL(values, name, probres);
+        }
+      }
+    }
+  }
+#endif
   return logger.InsertRow(values);
 }
 
