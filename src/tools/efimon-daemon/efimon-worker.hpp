@@ -36,8 +36,9 @@ class EfimonWorker {
   EfimonWorker(const std::string &name, const uint pid,
                EfimonAnalyser *analyser);
 
-  Status Start(const uint delay, const bool enable_perf = false,
-               const uint freq = 0);
+  // TODO(lleon): Try to simplify the API for configuring meters
+  Status Start(const uint delay, const uint samples,
+               const bool enable_perf = false, const uint freq = 0);
   Status Stop();
 
   virtual ~EfimonWorker();
@@ -47,6 +48,7 @@ class EfimonWorker {
 
   // Running variables
   uint pid_;
+  uint samples_;
   std::atomic<bool> running_;
   EfimonAnalyser *analyser_;
   std::unique_ptr<std::thread> thread_;

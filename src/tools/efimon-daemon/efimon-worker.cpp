@@ -22,6 +22,7 @@ namespace efimon {
 EfimonWorker::EfimonWorker()
     : name_{},
       pid_{0},
+      samples_{0},
       running_{false},
       analyser_{nullptr},
       thread_{nullptr},
@@ -33,6 +34,7 @@ EfimonWorker::EfimonWorker(const std::string &name, const uint pid,
                            EfimonAnalyser *analyser)
     : name_{name},
       pid_{pid},
+      samples_{0},
       running_{false},
       analyser_{analyser},
       thread_{nullptr},
@@ -43,6 +45,7 @@ EfimonWorker::EfimonWorker(const std::string &name, const uint pid,
 EfimonWorker::EfimonWorker(EfimonWorker &&worker)
     : name_{std::move(worker.name_)},
       pid_{std::move(worker.pid_)},
+      samples_{std::move(worker.samples_)},
       running_{false},
       analyser_{std::move(worker.analyser_)},
       thread_{nullptr},
@@ -55,16 +58,18 @@ EfimonWorker::EfimonWorker(EfimonWorker &&worker)
 
 EfimonWorker::~EfimonWorker() { this->Stop(); }
 
-Status EfimonWorker::Start(const uint delay, const bool enable_perf,
-                           const uint freq) {
+Status EfimonWorker::Start(const uint delay, const uint samples,
+                           const bool enable_perf, const uint freq) {
   if (0 == this->pid_) {
     EFM_ERROR_STATUS(
         "Invalid instance of the worker. Are you using default constructor?",
         Status::CANNOT_OPEN);
   }
   EFM_INFO("Process Monitor Start for PID: " + std::to_string(this->pid_) +
-           " with delay: " + std::to_string(delay));
-
+           " with delay: " + std::to_string(delay) +
+           " and samples: " + std::to_string(samples) + " and perf " +
+           std::to_string(enable_perf) + " at: " + std::to_string(freq));
+  this->samples_ = samples;
   // Create observers
   this->proc_meter_ = CreateIfEnabled<ProcStatObserver, true>(
       this->pid_, efimon::ObserverScope::PROCESS, delay);
@@ -113,6 +118,7 @@ Status EfimonWorker::Stop() {
 void EfimonWorker::ProcStatsWorker(const uint delay) {
   bool first_sample = true;
   bool enabled_perf = false;
+  bool enabled_samples = false;
   this->running_.store(true);
 
   this->mutex_.lock();
@@ -126,6 +132,7 @@ void EfimonWorker::ProcStatsWorker(const uint delay) {
         GetReadingsIfEnabled<InstructionReadings, true>(
             this->perf_annotate_meter_, 0);
   }
+  enabled_samples = this->samples_ != 0;
   this->mutex_.unlock();
 
   EFM_CHECK(this->CreateLogTable(), EFM_WARN);
@@ -146,6 +153,11 @@ void EfimonWorker::ProcStatsWorker(const uint delay) {
     // Wait for the next sample. Perf is a blocking call
     if (enabled_perf) {
       std::this_thread::sleep_for(std::chrono::seconds(delay));
+    }
+
+    // Check if enabled samples
+    if (enabled_samples && --(this->samples_) == 0) {
+      running_.store(false);
     }
     EFM_INFO("Process with PID " + std::to_string(this->pid_) + " updated");
   }
