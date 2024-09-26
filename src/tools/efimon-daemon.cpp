@@ -185,8 +185,8 @@ int main(int argc, char **argv) {
         uint delay =
             root.isMember("delay") ? root["delay"].asUInt() : delaytime;
         bool perf = root.isMember("perf") ? root["perf"].asBool() : false;
-        bool freq =
-            root.isMember("frequency") ? root["frequency"].asBool() : 1000;
+        uint freq = root.isMember("frequency") ? root["frequency"].asUInt()
+                                               : kDefFrequency;
         uint samples = root.isMember("samples") ? root["samples"].asUInt() : 0;
         std::string name = create_monitoring_file(outputpath, pid);
         name = root.isMember("name") ? root["name"].asString() : name;

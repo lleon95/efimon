@@ -151,7 +151,7 @@ void EfimonWorker::ProcStatsWorker(const uint delay) {
     }
 
     // Wait for the next sample. Perf is a blocking call
-    if (enabled_perf) {
+    if (!enabled_perf) {
       std::this_thread::sleep_for(std::chrono::seconds(delay));
     }
 
