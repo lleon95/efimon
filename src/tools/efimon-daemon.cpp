@@ -20,13 +20,6 @@
 
 using namespace efimon;  // NOLINT
 
-static constexpr int kDelay = 3;                  // 3 seconds
-static constexpr uint kDefFrequency = 100;        // 100 Hz
-static constexpr uint kDefaultSampleLimit = 100;  // 100 samples
-static constexpr char kDefaultOutputPath[] = "/tmp";
-static constexpr uint kPort = 5550;
-static uint logcounter = 0;
-
 void print_welcome() {
   std::cout << "-----------------------------------------------------------\n";
   std::cout << "               EfiMon Daemon Application \n";

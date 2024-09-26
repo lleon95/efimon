@@ -12,6 +12,13 @@
 #include <efimon/status.hpp>
 #include <memory>
 
+static constexpr int kDelay = 3;                  // 3 seconds
+static constexpr uint kDefFrequency = 100;        // 100 Hz
+static constexpr uint kDefaultSampleLimit = 100;  // 100 samples
+static constexpr char kDefaultOutputPath[] = "/tmp";
+static constexpr uint kPort = 5550;
+static uint logcounter = 0;
+
 #ifdef ENABLE_IPMI
 static constexpr bool kEnableIpmi = true;
 #else

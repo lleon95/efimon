@@ -39,4 +39,16 @@ if enable_zeromq and enable_jsoncpp
             dependencies: [project_deps, libefimon_dep, dependency('threads')],
             install : true,
   )
+
+  executable('efimon-launcher',
+            [
+              files(
+                'efimon-launcher.cpp',
+              )
+            ],
+            cpp_args : cpp_args,
+            include_directories : [project_inc],
+            dependencies: [project_deps, libefimon_dep, dependency('threads')],
+            install : true,
+  )
 endif
