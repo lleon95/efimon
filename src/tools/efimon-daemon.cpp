@@ -129,13 +129,17 @@ int main(int argc, char **argv) {
 
   // ----------- Listen forever -----------
   Json::CharReaderBuilder rbuilder;
+  Json::StreamWriterBuilder wbuilder;
   Json::Value root;
   rbuilder["collectComments"] = false;
 
   while (true) {
+    Json::Value response;
     zmq::message_t message;
-    std::string text, errs;
+    std::string text, errs, str_message;
     std::stringstream streamtext;
+
+    response["result"] = "";
 
     // Receive message
     auto res = socket.recv(message, zmq::recv_flags::none);
@@ -191,10 +195,11 @@ int main(int argc, char **argv) {
         } else {
           status = analyser.StopWorkerThread(pid);
         }
+
+        response["name"] = name;
       } else if ("poll" == transaction && root.isMember("pid")) {
         uint pid = root["pid"].asUInt();
         status = analyser.CheckWorkerThread(pid);
-        status.code = Status::OK;
       } else {
         status = Status{Status::INVALID_PARAMETER, "Invalid set of params"};
       }
@@ -203,8 +208,10 @@ int main(int argc, char **argv) {
         EFM_WARN(status.what());
       }
 
-      zmq::message_t reply("{\"result\": \"" + std::string(status.what()) +
-                           "\"}");
+      response["result"] = status.what();
+      response["code"] = status.code;
+      str_message = Json::writeString(wbuilder, response);
+      zmq::message_t reply(str_message);
       socket.send(reply, zmq::send_flags::none);
     }
   }

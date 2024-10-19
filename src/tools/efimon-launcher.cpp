@@ -205,9 +205,12 @@ void start_monitor(const AppData &data) {  // NOLINT
   res_str << process_msg.to_string();
   res_ok = Json::parseFromStream(rbuilder, res_str, &res_json, &str_err);
   if (res_ok) {
-    res_ok = res_json.isMember("result") ? res_json["result"] == "" : false;
+    res_ok = res_json.isMember("result") && res_json.isMember("name")
+                 ? res_json["result"] == ""
+                 : false;
     if (res_ok) {
       EFM_INFO("Process Monitor started");
+      EFM_INFO("Log file in: " + res_json["name"].asString());
     } else {
       EFM_INFO("Process Monitor could not be started");
     }
@@ -240,20 +243,13 @@ Status check_monitor(const AppData &data) {
   res_ok = Json::parseFromStream(rbuilder, res_str, &res_json, &str_err);
 
   /* Check response */
-  if (!res_ok || !res_json.isMember("result")) {
+  if (!res_ok || !res_json.isMember("code")) {
     return Status{Status::INVALID_PARAMETER, "The response is invalid"};
   }
 
   /* Check response: we expect a numerical response */
-  std::string value = res_json["result"].asString();
-  bool numeric = std::all_of(value.begin(), value.end(), ::isdigit);
-  if (!numeric) {
-    EFM_WARN("The response when polling is invalid. Value is: " + value);
-    return Status{Status::INVALID_PARAMETER, "The response is invalid"};
-  }
-
-  int val = std::stoi(value);
-  return Status{val, ""};
+  int value = res_json["code"].asInt();
+  return Status{value, ""};
 }
 
 void stop_monitor(const AppData &data) {  // NOLINT
@@ -421,8 +417,6 @@ int main(int argc, char **argv) {
   // Start the monitor
   appdata.pid = appdata.manager.GetPID();
   start_monitor(appdata);
-  // TODO(lleon): get name
-  // TODO(lleon): add timestamp to logs
 
   while (!appdata.terminated.load()) {
     // Wait according to the delay, which is often smaller than the one
