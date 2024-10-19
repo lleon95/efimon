@@ -36,9 +36,10 @@ struct AppData {
   std::vector<std::string> command;
   uint port = 5550;
   uint pid;
-  uint frequency;
-  uint samples;
-  uint delay;
+  uint frequency = kDefFrequency;
+  uint samples = -1;
+  uint delay = kDelay;
+  bool enable_perf = false;
 
   // Manages the process manager
   ProcessManager manager;
@@ -47,7 +48,13 @@ struct AppData {
   std::thread manager_th;
   std::atomic<bool> close;
   std::atomic<bool> terminated;
+
+  // Manages the socket
+  std::shared_ptr<zmq::socket_t> socket;
 };
+
+// ------------ Application data -------------------
+static std::shared_ptr<AppData> appdata_global;
 
 void print_welcome() {
   std::cout << "-----------------------------------------------------------\n";
@@ -62,8 +69,8 @@ std::string get_help(char **argv) {
       "\n\t";
   msg += std::string(argv[0]);
   msg +=
-      " -s,--samples SAMPLES (default: 100). Number of samples to "
-      "collect\n\t\t";
+      " -s,--samples SAMPLES (default: -1). Number of samples to "
+      "collect. -1 means until the process finishes\n\t\t";
   msg +=
       " -f,--frequency FREQUENCY_HZ (default: 100 Hz). Sampling "
       "frequency\n\t\t";
@@ -128,17 +135,22 @@ void launch_command(AppData &data) {  // NOLINT
   data.manager_mtx.unlock();
 }
 
-Json::Value create_template() {
+Json::Value create_template(const AppData &data) {
   Json::Value root;
 
   root["transaction"] = "process";
   root["state"] = true;
   root["pid"] = 0;
 
+  root["perf"] = data.enable_perf;
+  root["frequency"] = data.frequency;
+  root["samples"] = data.samples;
+  root["delay"] = data.delay;
+
   return root;
 }
 
-void start_monitor(zmq::socket_t &sock, const uint pid) {  // NOLINT
+void start_monitor(const AppData &data) {  // NOLINT
   Json::StreamWriterBuilder wbuilder;
   std::string str_message, str_err;
   Json::CharReaderBuilder rbuilder;
@@ -149,12 +161,12 @@ void start_monitor(zmq::socket_t &sock, const uint pid) {  // NOLINT
   [[maybe_unused]] zmq::send_result_t send_res;
   [[maybe_unused]] zmq::recv_result_t recv_res;
 
-  if (!sock.connected()) {
+  if (!data.socket->connected()) {
     // Error already reported
     return;
   }
 
-  payload = create_template();
+  payload = create_template(data);
   rbuilder["collectComments"] = false;
 
   /* Initialise the system monitor */
@@ -164,8 +176,8 @@ void start_monitor(zmq::socket_t &sock, const uint pid) {  // NOLINT
   /* Send the message */
   str_message = Json::writeString(wbuilder, payload);
   zmq::message_t system_msg(str_message);
-  send_res = sock.send(system_msg, zmq::send_flags::none);
-  recv_res = sock.recv(system_msg, zmq::recv_flags::none);
+  send_res = data.socket->send(system_msg, zmq::send_flags::none);
+  recv_res = data.socket->recv(system_msg, zmq::recv_flags::none);
   res_str << system_msg.to_string();
   res_ok = Json::parseFromStream(rbuilder, res_str, &res_json, &str_err);
   if (res_ok) {
@@ -183,13 +195,13 @@ void start_monitor(zmq::socket_t &sock, const uint pid) {  // NOLINT
 
   /* Initialise the process monitor */
   payload["transaction"] = "process";
-  payload["pid"] = pid;
+  payload["pid"] = data.pid;
 
   /* Send the message */
   str_message = Json::writeString(wbuilder, payload);
   zmq::message_t process_msg(str_message);
-  send_res = sock.send(process_msg, zmq::send_flags::none);
-  recv_res = sock.recv(process_msg, zmq::recv_flags::none);
+  send_res = data.socket->send(process_msg, zmq::send_flags::none);
+  recv_res = data.socket->recv(process_msg, zmq::recv_flags::none);
   res_str << process_msg.to_string();
   res_ok = Json::parseFromStream(rbuilder, res_str, &res_json, &str_err);
   if (res_ok) {
@@ -204,7 +216,7 @@ void start_monitor(zmq::socket_t &sock, const uint pid) {  // NOLINT
   }
 }
 
-void stop_monitor(zmq::socket_t &sock, const uint pid) {  // NOLINT
+void stop_monitor(const AppData &data) {  // NOLINT
   Json::StreamWriterBuilder wbuilder;
   std::string str_message, str_err;
   Json::CharReaderBuilder rbuilder;
@@ -215,24 +227,24 @@ void stop_monitor(zmq::socket_t &sock, const uint pid) {  // NOLINT
   [[maybe_unused]] zmq::send_result_t send_res;
   [[maybe_unused]] zmq::recv_result_t recv_res;
 
-  if (!sock.connected()) {
+  if (!data.socket->connected()) {
     // Error already reported
     return;
   }
 
-  payload = create_template();
+  payload = create_template(data);
   rbuilder["collectComments"] = false;
 
   /* Stop the process monitor */
   payload["transaction"] = "process";
-  payload["pid"] = pid;
+  payload["pid"] = data.pid;
   payload["state"] = false;
 
   /* Send the message */
   str_message = Json::writeString(wbuilder, payload);
   zmq::message_t process_msg(str_message);
-  send_res = sock.send(process_msg, zmq::send_flags::none);
-  recv_res = sock.recv(process_msg, zmq::recv_flags::none);
+  send_res = data.socket->send(process_msg, zmq::send_flags::none);
+  recv_res = data.socket->recv(process_msg, zmq::recv_flags::none);
   res_str << process_msg.to_string();
   res_ok = Json::parseFromStream(rbuilder, res_str, &res_json, &str_err);
   if (res_ok) {
@@ -248,15 +260,20 @@ void stop_monitor(zmq::socket_t &sock, const uint pid) {  // NOLINT
   }
 }
 
+void signal_handler(int /*signal*/) {
+  EFM_WARN("Termination signal received");
+  appdata_global->close.store(true);
+}
+
 int main(int argc, char **argv) {
+  print_welcome();
+  AppData appdata{};
+  appdata_global = decltype(appdata_global){&appdata, [](void *) {}};
+
+  // ------------ Comm data -------------------
   zmq::context_t context;
   auto type = zmq::socket_type::req;
-  zmq::socket_t socket{context, type};
-
-  print_welcome();
-
-  // ------------ Application data -------------------
-  AppData appdata;
+  appdata.socket = std::make_shared<zmq::socket_t>(context, type);
 
   // ------------ Arguments ------------
   ArgParser argparser(argc, argv);
@@ -269,6 +286,7 @@ int main(int argc, char **argv) {
   bool check_port = argparser.Exists("-p") || argparser.Exists("--port");
   bool check_command = argparser.Exists("-c") || argparser.Exists("--command");
   bool check_pid = argparser.Exists("-pid") || argparser.Exists("--pid");
+  // TODO(lleon): add enable perf option
 
   if (check_help) {
     std::string msg = get_help(argv);
@@ -327,6 +345,7 @@ int main(int argc, char **argv) {
 
   // Launch the Process
   appdata.terminated.store(false);
+  appdata.close.store(false);
   if (check_command) {
     EFM_INFO("Launching the process with command: " + appdata.command[0]);
     appdata.manager_th = std::thread(launch_command, std::ref(appdata));
@@ -339,6 +358,9 @@ int main(int argc, char **argv) {
     EFM_INFO("Launching the listener with PID: " + std::to_string(appdata.pid));
   }
 
+  // Attach signal handling for early termination
+  std::signal(SIGINT, signal_handler);
+
   if (appdata.terminated.load()) {
     // The process terminated early or abnormally
     EFM_ERROR(
@@ -349,8 +371,8 @@ int main(int argc, char **argv) {
   // Connect to the socket
   std::string endpoint = "tcp://localhost:" + std::to_string(appdata.port);
   EFM_INFO("Connecting to daemon over " + endpoint);
-  socket.connect(endpoint);
-  if (!socket.connected()) {
+  appdata.socket->connect(endpoint);
+  if (!appdata.socket->connected()) {
     EFM_WARN("Cannot connect to the monitoring daemon");
   } else {
     EFM_INFO("Connected to the monitoring daemon");
@@ -358,19 +380,28 @@ int main(int argc, char **argv) {
 
   // Start the monitor
   appdata.pid = appdata.manager.GetPID();
-  start_monitor(socket, appdata.pid);
+  start_monitor(appdata);
 
   while (!appdata.terminated.load()) {
-    // Sleep while running
-    std::this_thread::sleep_for(std::chrono::milliseconds(kThreadCheckTime));
+    // Wait according to the delay, which is often smaller than the one
+    // from the daemon
+    std::this_thread::sleep_for(std::chrono::milliseconds(appdata.delay));
+
+    // CHECK THE NUMBER OF SAMPLES
   }
-  EFM_INFO("Process stopped");
+
+  if (appdata.terminated.load()) {
+    EFM_INFO("Process stopped normally. Stopping monitor");
+  } else {
+    EFM_INFO("Sending termination signal. Stopping monitor");
+    appdata.close.store(true);
+  }
 
   // Stop the monitor
-  stop_monitor(socket, appdata.pid);
+  stop_monitor(appdata);
 
-  // TODO(lleon): Add interrupt
-  // TODO(lleon): Add delay
+  // Close the socket
+  appdata.socket.reset();
 
   // Join the Process
   appdata.manager_th.join();
