@@ -323,6 +323,7 @@ int main(int argc, char **argv) {
   bool check_command = argparser.Exists("-c") || argparser.Exists("--command");
   bool check_pid = argparser.Exists("-pid") || argparser.Exists("--pid");
   // TODO(lleon): add enable perf option
+  // TODO(lleon): add name option
 
   if (check_help) {
     std::string msg = get_help(argv);
@@ -390,6 +391,7 @@ int main(int argc, char **argv) {
       appdata.manager_cv.wait_for(lk, std::chrono::seconds(kThreadStartUpTime));
       EFM_INFO("Launched command: " + appdata.command[0]);
     }
+    appdata.pid = appdata.manager.GetPID();
   } else {
     EFM_INFO("Launching the listener with PID: " + std::to_string(appdata.pid));
   }
@@ -415,10 +417,9 @@ int main(int argc, char **argv) {
   }
 
   // Start the monitor
-  appdata.pid = appdata.manager.GetPID();
   start_monitor(appdata);
 
-  while (!appdata.terminated.load()) {
+  while (!appdata.terminated.load() && !appdata.close.load()) {
     // Wait according to the delay, which is often smaller than the one
     // from the daemon
     std::this_thread::sleep_for(std::chrono::seconds(appdata.delay));
@@ -434,7 +435,7 @@ int main(int argc, char **argv) {
   if (appdata.terminated.load()) {
     EFM_INFO("Process stopped normally. Stopping monitor");
   } else {
-    EFM_INFO("Sending termination signal. Stopping monitor");
+    EFM_INFO("Sending termination signal (if spawned). Stopping monitor");
     appdata.close.store(true);
   }
 
@@ -445,7 +446,7 @@ int main(int argc, char **argv) {
   appdata.socket.reset();
 
   // Join the Process
-  appdata.manager_th.join();
+  EFM_SOFT_CHECK_AND_EXECUTE(check_command, appdata.manager_th.join());
   EFM_INFO("Finished. Closing everything...");
   return 0;
 }

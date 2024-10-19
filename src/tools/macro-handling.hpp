@@ -63,4 +63,7 @@ efimon::Status TriggerIfEnabled(std::shared_ptr<T> instance) {
   }
 }
 
+#define EFM_SOFT_CHECK_AND_EXECUTE(obj, cmd) \
+  if ((obj)) (cmd);
+
 #endif  // SRC_TOOLS_MACRO_HANDLING_HPP_

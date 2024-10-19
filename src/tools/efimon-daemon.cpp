@@ -204,7 +204,8 @@ int main(int argc, char **argv) {
         status = Status{Status::INVALID_PARAMETER, "Invalid set of params"};
       }
 
-      if (Status::OK != status.code) {
+      if (Status::OK != status.code && Status::RUNNING != status.code &&
+          Status::STOPPED != status.code) {
         EFM_WARN(status.what());
       }
 
