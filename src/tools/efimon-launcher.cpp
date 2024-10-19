@@ -335,7 +335,6 @@ int main(int argc, char **argv) {
   bool check_perf =
       argparser.Exists("-perf") || argparser.Exists("--enable-perf");
   bool check_output = argparser.Exists("-o") || argparser.Exists("--output");
-  // TODO(lleon): add enable perf option
 
   if (check_help) {
     std::string msg = get_help(argv);

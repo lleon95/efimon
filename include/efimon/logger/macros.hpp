@@ -29,6 +29,11 @@
 
 #define EFM_INFO(msg) \
   { std::cerr << GetUTCTimestamp() << " [INFO]: " << msg << std::endl; }
+#define EFM_DEBUG(d, msg)                                                 \
+  {                                                                       \
+    if ((d))                                                              \
+      std::cerr << GetUTCTimestamp() << " [DEBUG]: " << msg << std::endl; \
+  }
 #define EFM_WARN(msg) \
   { std::cerr << GetUTCTimestamp() << " [WARNING]: " << msg << std::endl; }
 #define EFM_WARN_AND_BREAK(msg)                                           \

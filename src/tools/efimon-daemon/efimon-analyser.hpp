@@ -50,6 +50,9 @@ class EfimonAnalyser {
   template <class T>
   Status GetReadings(const int index, T &out);  // NOLINT
 
+  void EnableDebug();
+  bool IsDebugged();
+
   virtual ~EfimonAnalyser() = default;
 
  private:
@@ -75,6 +78,9 @@ class EfimonAnalyser {
   std::mutex sys_mutex_;
   std::unique_ptr<std::thread> sys_thread_;
   std::unordered_map<uint, std::shared_ptr<EfimonWorker>> proc_workers_;
+
+  // Options
+  bool enable_debug_;
 };
 
 template <class T>

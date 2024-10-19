@@ -21,6 +21,9 @@ EfimonAnalyser::EfimonAnalyser() : sys_running_{false} {
 
   // Reserve space and clean up results
   this->readings_.resize(EfimonAnalyser::LAST_READINGS, nullptr);
+
+  // Disable debug by default
+  this->enable_debug_ = false;
 }
 
 Status EfimonAnalyser::StartSystemThread(const uint delay) {
@@ -97,6 +100,10 @@ Status EfimonAnalyser::StopWorkerThread(const uint pid) {
   return Status{};
 }
 
+void EfimonAnalyser::EnableDebug() { this->enable_debug_ = true; }
+
+bool EfimonAnalyser::IsDebugged() { return this->enable_debug_; }
+
 Status EfimonAnalyser::RefreshIPMI() {
   std::scoped_lock slock(this->sys_mutex_);
   return TriggerIfEnabled(this->ipmi_meter_);
@@ -134,7 +141,7 @@ void EfimonAnalyser::SystemStatsWorker(const int delay) {
 
     /* Wait for the next sample */
     std::this_thread::sleep_for(std::chrono::seconds(delay));
-    EFM_INFO("System Updated");
+    EFM_DEBUG(this->enable_debug_, "System Updated");
   }
 }
 

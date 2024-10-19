@@ -17,6 +17,7 @@
 
 #include "efimon-daemon/efimon-analyser.hpp"  // NOLINT
 #include "macro-handling.hpp"                 // NOLINT
+
 namespace efimon {
 
 EfimonWorker::EfimonWorker()
@@ -164,7 +165,8 @@ void EfimonWorker::ProcStatsWorker(const uint delay) {
     if (enabled_samples && --(this->samples_) == 0) {
       running_.store(false);
     }
-    EFM_INFO("Process with PID " + std::to_string(this->pid_) + " updated");
+    EFM_DEBUG(analyser_->IsDebugged(),
+              "Process with PID " + std::to_string(this->pid_) + " updated");
   }
 
   EFM_INFO("Monitoring of PID " + std::to_string(this->pid_) + " ended");

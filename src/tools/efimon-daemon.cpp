@@ -52,6 +52,8 @@ int main(int argc, char **argv) {
       argparser.Exists("-o") || argparser.Exists("--output-folder");
   bool check_help = argparser.Exists("-h") || argparser.Exists("--help");
   bool check_port = argparser.Exists("-p") || argparser.Exists("--port");
+  bool debug_mode =
+      argparser.Exists("-g") || argparser.Exists("--enable-debug");
 
   if (check_help) {
     std::string msg =
@@ -68,6 +70,7 @@ int main(int argc, char **argv) {
     msg +=
         " -f,--frequency FREQUENCY_HZ (default: 100 Hz). Sampling "
         "frequency\n\t\t";
+    msg += " -g,--enable-debug (default: disabled) Enable debug messages\n\t\t";
     msg +=
         " -d,--delay DELAY_SECS (default: 3 Secs). Sampling time window\n\t\t";
     msg +=
@@ -115,6 +118,7 @@ int main(int argc, char **argv) {
   EFM_INFO(std::string("Delay time [secs]: ") + std::to_string(delaytime));
   EFM_INFO(std::string("Output folder: ") + outputpath);
   EFM_INFO(std::string("IPC TCP Port: ") + std::to_string(port));
+  EFM_INFO(std::string("Debug Mode: ") + std::to_string(debug_mode));
 
   // ---------- Initialise ZeroMQ ------------
   std::string endpoint = "tcp://*:" + std::to_string(port);
@@ -125,6 +129,7 @@ int main(int argc, char **argv) {
 
   // ----------- Start the thread -----------
   EfimonAnalyser analyser{};
+  EFM_SOFT_CHECK_AND_EXECUTE(debug_mode, analyser.EnableDebug());
   analyser.StartSystemThread(delaytime);
 
   // ----------- Listen forever -----------
