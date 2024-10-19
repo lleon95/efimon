@@ -11,6 +11,7 @@
 #include <atomic>
 #include <chrono>              // NOLINT
 #include <condition_variable>  // NOLINT
+#include <csignal>             // NOLINT
 #include <efimon/arg-parser.hpp>
 #include <efimon/logger/macros.hpp>
 #include <efimon/proc/cpuinfo.hpp>
@@ -33,7 +34,7 @@ using namespace efimon;  // NOLINT
 struct AppData {
   // Manages the app arguments and data
   std::vector<std::string> command;
-  uint port;
+  uint port = 5550;
   uint pid;
   uint frequency;
   uint samples;
@@ -127,7 +128,131 @@ void launch_command(AppData &data) {  // NOLINT
   data.manager_mtx.unlock();
 }
 
+Json::Value create_template() {
+  Json::Value root;
+
+  root["transaction"] = "process";
+  root["state"] = true;
+  root["pid"] = 0;
+
+  return root;
+}
+
+void start_monitor(zmq::socket_t &sock, const uint pid) {  // NOLINT
+  Json::StreamWriterBuilder wbuilder;
+  std::string str_message, str_err;
+  Json::CharReaderBuilder rbuilder;
+  Json::Value payload, res_json;
+  std::stringstream res_str;
+  bool res_ok = false;
+
+  [[maybe_unused]] zmq::send_result_t send_res;
+  [[maybe_unused]] zmq::recv_result_t recv_res;
+
+  if (!sock.connected()) {
+    // Error already reported
+    return;
+  }
+
+  payload = create_template();
+  rbuilder["collectComments"] = false;
+
+  /* Initialise the system monitor */
+  payload["transaction"] = "system";
+  payload["state"] = true;
+
+  /* Send the message */
+  str_message = Json::writeString(wbuilder, payload);
+  zmq::message_t system_msg(str_message);
+  send_res = sock.send(system_msg, zmq::send_flags::none);
+  recv_res = sock.recv(system_msg, zmq::recv_flags::none);
+  res_str << system_msg.to_string();
+  res_ok = Json::parseFromStream(rbuilder, res_str, &res_json, &str_err);
+  if (res_ok) {
+    res_ok = res_json.isMember("result") ? res_json["result"] == "" : false;
+    if (res_ok) {
+      EFM_INFO("System Monitor started");
+    } else {
+      EFM_INFO(
+          "System Monitor could not be started. Probably, it's been started "
+          "before");
+    }
+  } else {
+    EFM_WARN("Cannot parse the response: " + str_err);
+  }
+
+  /* Initialise the process monitor */
+  payload["transaction"] = "process";
+  payload["pid"] = pid;
+
+  /* Send the message */
+  str_message = Json::writeString(wbuilder, payload);
+  zmq::message_t process_msg(str_message);
+  send_res = sock.send(process_msg, zmq::send_flags::none);
+  recv_res = sock.recv(process_msg, zmq::recv_flags::none);
+  res_str << process_msg.to_string();
+  res_ok = Json::parseFromStream(rbuilder, res_str, &res_json, &str_err);
+  if (res_ok) {
+    res_ok = res_json.isMember("result") ? res_json["result"] == "" : false;
+    if (res_ok) {
+      EFM_INFO("Process Monitor started");
+    } else {
+      EFM_INFO("Process Monitor could not be started");
+    }
+  } else {
+    EFM_WARN("Cannot parse the response" + str_err);
+  }
+}
+
+void stop_monitor(zmq::socket_t &sock, const uint pid) {  // NOLINT
+  Json::StreamWriterBuilder wbuilder;
+  std::string str_message, str_err;
+  Json::CharReaderBuilder rbuilder;
+  Json::Value payload, res_json;
+  std::stringstream res_str;
+  bool res_ok = false;
+
+  [[maybe_unused]] zmq::send_result_t send_res;
+  [[maybe_unused]] zmq::recv_result_t recv_res;
+
+  if (!sock.connected()) {
+    // Error already reported
+    return;
+  }
+
+  payload = create_template();
+  rbuilder["collectComments"] = false;
+
+  /* Stop the process monitor */
+  payload["transaction"] = "process";
+  payload["pid"] = pid;
+  payload["state"] = false;
+
+  /* Send the message */
+  str_message = Json::writeString(wbuilder, payload);
+  zmq::message_t process_msg(str_message);
+  send_res = sock.send(process_msg, zmq::send_flags::none);
+  recv_res = sock.recv(process_msg, zmq::recv_flags::none);
+  res_str << process_msg.to_string();
+  res_ok = Json::parseFromStream(rbuilder, res_str, &res_json, &str_err);
+  if (res_ok) {
+    res_ok = res_json.isMember("result") ? res_json["result"] == "" : false;
+    if (res_ok) {
+      EFM_INFO("Process Monitor stopped");
+    } else {
+      EFM_INFO("Process Monitor could not be stopped. Payload: " +
+               process_msg.to_string());
+    }
+  } else {
+    EFM_WARN("Cannot parse the response" + str_err);
+  }
+}
+
 int main(int argc, char **argv) {
+  zmq::context_t context;
+  auto type = zmq::socket_type::req;
+  zmq::socket_t socket{context, type};
+
   print_welcome();
 
   // ------------ Application data -------------------
@@ -201,17 +326,54 @@ int main(int argc, char **argv) {
   EFM_INFO(std::string("IPC TCP Port: ") + std::to_string(appdata.port));
 
   // Launch the Process
+  appdata.terminated.store(false);
   if (check_command) {
     EFM_INFO("Launching the process with command: " + appdata.command[0]);
     appdata.manager_th = std::thread(launch_command, std::ref(appdata));
     {
       std::unique_lock lk(appdata.manager_mtx);
       appdata.manager_cv.wait_for(lk, std::chrono::seconds(kThreadStartUpTime));
+      EFM_INFO("Launched command: " + appdata.command[0]);
     }
   } else {
     EFM_INFO("Launching the listener with PID: " + std::to_string(appdata.pid));
   }
 
+  if (appdata.terminated.load()) {
+    // The process terminated early or abnormally
+    EFM_ERROR(
+        "The process cannot be monitored. The termination activated early");
+    return -1;
+  }
+
+  // Connect to the socket
+  std::string endpoint = "tcp://localhost:" + std::to_string(appdata.port);
+  EFM_INFO("Connecting to daemon over " + endpoint);
+  socket.connect(endpoint);
+  if (!socket.connected()) {
+    EFM_WARN("Cannot connect to the monitoring daemon");
+  } else {
+    EFM_INFO("Connected to the monitoring daemon");
+  }
+
+  // Start the monitor
+  appdata.pid = appdata.manager.GetPID();
+  start_monitor(socket, appdata.pid);
+
+  while (!appdata.terminated.load()) {
+    // Sleep while running
+    std::this_thread::sleep_for(std::chrono::milliseconds(kThreadCheckTime));
+  }
+  EFM_INFO("Process stopped");
+
+  // Stop the monitor
+  stop_monitor(socket, appdata.pid);
+
+  // TODO(lleon): Add interrupt
+  // TODO(lleon): Add delay
+
   // Join the Process
+  appdata.manager_th.join();
+  EFM_INFO("Finished. Closing everything...");
   return 0;
 }
