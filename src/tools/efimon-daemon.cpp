@@ -160,7 +160,6 @@ int main(int argc, char **argv) {
         socket.send(reply, zmq::send_flags::none);
       }
       std::string transaction = root["transaction"].asString();
-      EFM_INFO("Transaction: " + transaction);
 
       // Complete transaction
       if ("system" == transaction && root.isMember("state")) {
@@ -192,6 +191,10 @@ int main(int argc, char **argv) {
         } else {
           status = analyser.StopWorkerThread(pid);
         }
+      } else if ("poll" == transaction && root.isMember("pid")) {
+        uint pid = root["pid"].asUInt();
+        status = analyser.CheckWorkerThread(pid);
+        status.code = Status::OK;
       } else {
         status = Status{Status::INVALID_PARAMETER, "Invalid set of params"};
       }

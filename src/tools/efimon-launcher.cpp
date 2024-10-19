@@ -216,6 +216,46 @@ void start_monitor(const AppData &data) {  // NOLINT
   }
 }
 
+Status check_monitor(const AppData &data) {
+  Json::StreamWriterBuilder wbuilder;
+  std::string str_message, str_err;
+  Json::CharReaderBuilder rbuilder;
+  Json::Value payload, res_json;
+  std::stringstream res_str;
+  bool res_ok = false;
+
+  [[maybe_unused]] zmq::send_result_t send_res;
+  [[maybe_unused]] zmq::recv_result_t recv_res;
+
+  /* Make the payload */
+  payload["transaction"] = "poll";
+  payload["pid"] = data.pid;
+
+  /* Send the message */
+  str_message = Json::writeString(wbuilder, payload);
+  zmq::message_t process_msg(str_message);
+  send_res = data.socket->send(process_msg, zmq::send_flags::none);
+  recv_res = data.socket->recv(process_msg, zmq::recv_flags::none);
+  res_str << process_msg.to_string();
+  res_ok = Json::parseFromStream(rbuilder, res_str, &res_json, &str_err);
+
+  /* Check response */
+  if (!res_ok || !res_json.isMember("result")) {
+    return Status{Status::INVALID_PARAMETER, "The response is invalid"};
+  }
+
+  /* Check response: we expect a numerical response */
+  std::string value = res_json["result"].asString();
+  bool numeric = std::all_of(value.begin(), value.end(), ::isdigit);
+  if (!numeric) {
+    EFM_WARN("The response when polling is invalid. Value is: " + value);
+    return Status{Status::INVALID_PARAMETER, "The response is invalid"};
+  }
+
+  int val = std::stoi(value);
+  return Status{val, ""};
+}
+
 void stop_monitor(const AppData &data) {  // NOLINT
   Json::StreamWriterBuilder wbuilder;
   std::string str_message, str_err;
@@ -381,13 +421,20 @@ int main(int argc, char **argv) {
   // Start the monitor
   appdata.pid = appdata.manager.GetPID();
   start_monitor(appdata);
+  // TODO(lleon): get name
+  // TODO(lleon): add timestamp to logs
 
   while (!appdata.terminated.load()) {
     // Wait according to the delay, which is often smaller than the one
     // from the daemon
-    std::this_thread::sleep_for(std::chrono::milliseconds(appdata.delay));
+    std::this_thread::sleep_for(std::chrono::seconds(appdata.delay));
 
-    // CHECK THE NUMBER OF SAMPLES
+    Status res = check_monitor(appdata);
+
+    if (Status::STOPPED == res.code) {
+      EFM_INFO("The monitor has completed the number of samples");
+      break;
+    }
   }
 
   if (appdata.terminated.load()) {

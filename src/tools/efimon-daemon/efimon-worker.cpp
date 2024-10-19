@@ -115,6 +115,11 @@ Status EfimonWorker::Stop() {
   return Status{};
 }
 
+Status EfimonWorker::State() {
+  auto code = this->running_.load() ? Status::RUNNING : Status::STOPPED;
+  return Status{code, std::to_string(static_cast<uint>(code))};
+}
+
 void EfimonWorker::ProcStatsWorker(const uint delay) {
   bool first_sample = true;
   bool enabled_perf = false;

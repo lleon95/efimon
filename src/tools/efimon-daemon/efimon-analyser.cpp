@@ -61,6 +61,15 @@ Status EfimonAnalyser::StartWorkerThread(const std::string &name,
   return this->proc_workers_[pid]->Start(delay, samples, enable_perf, freq);
 }
 
+Status EfimonAnalyser::CheckWorkerThread(const uint pid) {
+  if (this->proc_workers_.end() == this->proc_workers_.find(pid)) {
+    return Status{Status::NOT_FOUND,
+                  std::to_string(static_cast<uint>(Status::NOT_FOUND))};
+  }
+
+  return this->proc_workers_[pid]->State();
+}
+
 Status EfimonAnalyser::StopSystemThread() {
   if (nullptr == this->sys_thread_) {
     return Status{Status::NOT_FOUND, "The thread was not running"};

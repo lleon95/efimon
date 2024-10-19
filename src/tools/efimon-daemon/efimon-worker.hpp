@@ -40,6 +40,7 @@ class EfimonWorker {
   Status Start(const uint delay, const uint samples,
                const bool enable_perf = false, const uint freq = 0);
   Status Stop();
+  Status State();
 
   virtual ~EfimonWorker();
 
