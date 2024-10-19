@@ -40,6 +40,7 @@ struct AppData {
   uint samples = -1;
   uint delay = kDelay;
   bool enable_perf = false;
+  std::string filename = "";
 
   // Manages the process manager
   ProcessManager manager;
@@ -81,6 +82,12 @@ std::string get_help(char **argv) {
   msg +=
       " -pid,--pid PID. PID to attach to. This option must be at "
       "the end of the launcher command\n\t\t";
+  msg +=
+      " -perf,--enable-perf Enable Linux Perf to get the sampling profiles"
+      "\n\t\t";
+  msg +=
+      " -o,--output PATH (default: provided by daemon). Output file of the "
+      "logs\n\t\t";
   msg +=
       " -p,--port PORT (default: 5550 Secs). EfiMon Socket Port for "
       "IPC\n\t\t";
@@ -196,6 +203,9 @@ void start_monitor(const AppData &data) {  // NOLINT
   /* Initialise the process monitor */
   payload["transaction"] = "process";
   payload["pid"] = data.pid;
+
+  EFM_SOFT_CHECK_AND_EXECUTE(!data.filename.empty(),
+                             payload["name"] = data.filename);
 
   /* Send the message */
   str_message = Json::writeString(wbuilder, payload);
@@ -322,8 +332,10 @@ int main(int argc, char **argv) {
   bool check_port = argparser.Exists("-p") || argparser.Exists("--port");
   bool check_command = argparser.Exists("-c") || argparser.Exists("--command");
   bool check_pid = argparser.Exists("-pid") || argparser.Exists("--pid");
+  bool check_perf =
+      argparser.Exists("-perf") || argparser.Exists("--enable-perf");
+  bool check_output = argparser.Exists("-o") || argparser.Exists("--output");
   // TODO(lleon): add enable perf option
-  // TODO(lleon): add name option
 
   if (check_help) {
     std::string msg = get_help(argv);
@@ -374,6 +386,13 @@ int main(int argc, char **argv) {
         std::stoi(argparser.Exists("-p") ? argparser.GetOption("-p")
                                          : argparser.GetOption("--port"));
   }
+
+  if (check_output) {
+    appdata.filename = argparser.Exists("-o") ? argparser.GetOption("-")
+                                              : argparser.GetOption("--output");
+  }
+
+  appdata.enable_perf = check_perf;
 
   EFM_INFO(std::string("Frequency [Hz]: ") + std::to_string(appdata.frequency));
   EFM_INFO(std::string("Samples: ") + std::to_string(appdata.samples));
@@ -432,15 +451,17 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (appdata.terminated.load()) {
-    EFM_INFO("Process stopped normally. Stopping monitor");
-  } else {
-    EFM_INFO("Sending termination signal (if spawned). Stopping monitor");
-    appdata.close.store(true);
-  }
-
   // Stop the monitor
   stop_monitor(appdata);
+
+  // Close the process if applies
+  if (appdata.terminated.load()) {
+    EFM_INFO("Process stopped normally");
+  } else {
+    EFM_INFO("Sending termination signal (if spawned)");
+    appdata.close.store(true);
+    EFM_SOFT_CHECK_AND_EXECUTE(check_command, kill(appdata.pid, SIGINT));
+  }
 
   // Close the socket
   appdata.socket.reset();
