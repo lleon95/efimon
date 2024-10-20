@@ -8,7 +8,6 @@
 
 #include "efimon-daemon/efimon-analyser.hpp"  // NOLINT
 
-#include <algorithm>
 #include <efimon/proc/cpuinfo.hpp>
 
 #include "efimon-daemon/efimon-worker.hpp"  // NOLINT
@@ -159,9 +158,8 @@ Status EfimonAnalyser::RefreshProcSys() {
 
   auto cpu_readings =
       GetReadingsIfEnabled<CPUReadings, true>(this->proc_sys_meter_, 0);
-  if (cpu_readings) {
-    cpu_readings->socket_frequency = socket_means;
-  }
+  EFM_SOFT_CHECK_AND_EXECUTE(cpu_readings,
+                             cpu_readings->socket_frequency = socket_means);
 
   return status;
 }
