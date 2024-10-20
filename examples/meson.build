@@ -87,6 +87,16 @@ executable('process-manager',
           install : false,
 )
 
+executable('process-tree',
+          [
+            files('process-tree.cpp')
+          ],
+          cpp_args : cpp_args,
+          include_directories : [project_inc],
+          dependencies: [libefimon_dep],
+          install : false,
+)
+
 executable('process-manager-threaded',
           [
             files('process-manager-threaded.cpp')
