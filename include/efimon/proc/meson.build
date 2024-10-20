@@ -14,4 +14,5 @@ lib_proc_headers += [
   files('net.hpp'),
   files('stat.hpp'),
   files('thread-tree.hpp'),
+  files('process-tree.hpp'),
 ]
