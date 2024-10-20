@@ -189,6 +189,15 @@ Status EfimonWorker::CreateLogTable() {
   // System and Process CPU usage
   this->log_table_.push_back({"SystemCpuUsage", Logger::FieldType::FLOAT});
   this->log_table_.push_back({"ProcessCpuUsage", Logger::FieldType::FLOAT});
+  // Socket frequencies
+  CPUReadings sys_cpu_readings{};
+  EFM_CHECK(this->analyser_->GetReadings(3, sys_cpu_readings), EFM_WARN);
+  for (uint i = 0; i < sys_cpu_readings.socket_frequency.size(); ++i) {
+    std::string name = "SocketFreq";
+    name += std::to_string(i);
+    this->log_table_.push_back({name, Logger::FieldType::FLOAT});
+  }
+
   // Add the IPMI values
 #ifdef ENABLE_IPMI
   PSUReadings psu_readings;
@@ -280,6 +289,11 @@ Status EfimonWorker::LogReadings(CSVLogger &logger) {  // NOLINT
   LOG_VAL(values, "SystemCpuUsage", sys_usage);
   LOG_VAL(values, "ProcessCpuUsage", proc_usage);
   LOG_VAL(values, "TimeDifference", difference);
+  for (uint i = 0; i < sys_cpu_readings.socket_frequency.size(); ++i) {
+    std::string name = "SocketFreq";
+    name += std::to_string(i);
+    LOG_VAL(values, name, sys_cpu_readings.socket_frequency[i]);
+  }
 
 #ifdef ENABLE_IPMI
   PSUReadings psu_readings{};

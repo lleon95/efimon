@@ -8,10 +8,45 @@
 
 #include "efimon-daemon/efimon-analyser.hpp"  // NOLINT
 
+#include <efimon/proc/cpuinfo.hpp>
+
 #include "efimon-daemon/efimon-worker.hpp"  // NOLINT
 #include "macro-handling.hpp"               // NOLINT
 
 namespace efimon {
+
+class SocketInfo {
+ public:
+  /** Default constructor */
+  SocketInfo() = default;
+
+  /** Return the number of sockets */
+  int GetNumSockets() {
+    std::scoped_lock slock(this->info_mutex_);
+    return info_.GetNumSockets();
+  }
+
+  /** Refresh values for detecting the microarchitecture */
+  Status Refresh() {
+    std::scoped_lock slock(this->info_mutex_);
+    return info_.Refresh();
+  }
+
+  /** Get the mean frequencies */
+  std::vector<float> GetSocketMeanFrequency() {
+    std::scoped_lock slock(this->info_mutex_);
+    return info_.GetSocketMeanFrequency();
+  }
+
+ private:
+  /** CPU Info object which should be a singleton */
+  CPUInfo info_;
+  /** Mutex for thread-safety */
+  std::mutex info_mutex_;
+};
+
+/* SocketInfo must be a singleton */
+static SocketInfo socket_info_{};
 
 EfimonAnalyser::EfimonAnalyser() : sys_running_{false} {
   this->ipmi_meter_ = CreateIfEnabled<IPMIMeterObserver, kEnableIpmi>();
@@ -116,8 +151,17 @@ Status EfimonAnalyser::RefreshRAPL() {
 
 Status EfimonAnalyser::RefreshProcSys() {
   std::scoped_lock slock(this->sys_mutex_);
-  return TriggerIfEnabled(this->proc_sys_meter_);
-  return Status{};
+  Status status = TriggerIfEnabled(this->proc_sys_meter_);
+
+  socket_info_.Refresh();
+  std::vector<float> socket_means = socket_info_.GetSocketMeanFrequency();
+
+  auto cpu_readings =
+      GetReadingsIfEnabled<CPUReadings, true>(this->proc_sys_meter_, 0);
+  EFM_SOFT_CHECK_AND_EXECUTE(cpu_readings,
+                             cpu_readings->socket_frequency = socket_means);
+
+  return status;
 }
 
 void EfimonAnalyser::SystemStatsWorker(const int delay) {
