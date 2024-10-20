@@ -168,7 +168,7 @@ void start_monitor(const AppData &data) {  // NOLINT
   [[maybe_unused]] zmq::send_result_t send_res;
   [[maybe_unused]] zmq::recv_result_t recv_res;
 
-  if (!data.socket->connected()) {
+  if (!data.socket) {
     // Error already reported
     return;
   }
@@ -273,7 +273,7 @@ void stop_monitor(const AppData &data) {  // NOLINT
   [[maybe_unused]] zmq::send_result_t send_res;
   [[maybe_unused]] zmq::recv_result_t recv_res;
 
-  if (!data.socket->connected()) {
+  if (!data.socket) {
     // Error already reported
     return;
   }
@@ -428,7 +428,7 @@ int main(int argc, char **argv) {
   std::string endpoint = "tcp://localhost:" + std::to_string(appdata.port);
   EFM_INFO("Connecting to daemon over " + endpoint);
   appdata.socket->connect(endpoint);
-  if (!appdata.socket->connected()) {
+  if (!appdata.socket) {
     EFM_WARN("Cannot connect to the monitoring daemon");
   } else {
     EFM_INFO("Connected to the monitoring daemon");

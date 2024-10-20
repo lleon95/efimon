@@ -8,6 +8,7 @@
 
 #include "efimon-daemon/efimon-worker.hpp"  // NOLINT
 
+#include <array>
 #include <efimon/logger/csv.hpp>
 #include <efimon/logger/macros.hpp>
 #include <efimon/perf/annotate.hpp>
