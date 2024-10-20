@@ -28,6 +28,7 @@
 #include <efimon/arg-parser.hpp>
 #include <efimon/asm-classifier.hpp>
 #include <efimon/logger/csv.hpp>
+#include <efimon/logger/macros.hpp>
 #include <efimon/perf/annotate.hpp>
 #include <efimon/perf/record.hpp>
 #include <efimon/power/ipmi.hpp>
@@ -40,35 +41,6 @@
 #include <string>
 #include <third-party/pstream.hpp>
 #include <thread>  // NOLINT
-
-#define EFM_INFO(msg) \
-  { std::cerr << "[INFO]: " << msg << std::endl; }
-#define EFM_WARN(msg) \
-  { std::cerr << "[WARNING]: " << msg << std::endl; }
-#define EFM_WARN_AND_BREAK(msg)                     \
-  {                                                 \
-    std::cerr << "[WARNING]: " << msg << std::endl; \
-    break;                                          \
-  }
-#define EFM_ERROR(msg)                            \
-  {                                               \
-    std::cerr << "[ERROR]: " << msg << std::endl; \
-    return -1;                                    \
-  }
-#define EFM_CHECK(inst, func)                \
-  {                                          \
-    Status s_ = (inst);                      \
-    if (s_.code != Status::OK) func(s_.msg); \
-  }
-#define EFM_CRITICAL_CHECK(inst)                  \
-  {                                               \
-    Status s_ = (inst);                           \
-    if (s_.code != Status::OK) EFM_ERROR(s_.msg); \
-  }
-#define EFM_RES std::cout
-#define LOG_VAL(vars, name, val)   \
-  (vars)[name] = std::make_shared< \
-      Logger::Value<std::remove_reference<decltype(val)>::type>>((val));
 
 using namespace efimon;  // NOLINT
 

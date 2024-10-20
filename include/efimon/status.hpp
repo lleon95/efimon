@@ -46,6 +46,8 @@ class Status : public std::exception {
     CANNOT_OPEN,          /** Cannot open a process or a file */
     /** The resource cannot be accessed with current user privileges */
     ACCESS_DENIED,
+    RUNNING, /** The resource is running */
+    STOPPED, /** The resource is stopped */
   };
 
   /**

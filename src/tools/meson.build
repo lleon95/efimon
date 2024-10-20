@@ -24,3 +24,31 @@ executable('efimon-power-analyser',
           dependencies: [libefimon_dep, dependency('threads')],
           install : true,
 )
+
+if enable_zeromq and enable_jsoncpp
+  executable('efimon-daemon',
+            [
+              files(
+                'efimon-daemon.cpp',
+                'efimon-daemon/efimon-analyser.cpp',
+                'efimon-daemon/efimon-worker.cpp',
+              )
+            ],
+            cpp_args : cpp_args,
+            include_directories : [project_inc],
+            dependencies: [project_deps, libefimon_dep, dependency('threads')],
+            install : true,
+  )
+
+  executable('efimon-launcher',
+            [
+              files(
+                'efimon-launcher.cpp',
+              )
+            ],
+            cpp_args : cpp_args,
+            include_directories : [project_inc],
+            dependencies: [project_deps, libefimon_dep, dependency('threads')],
+            install : true,
+  )
+endif

@@ -36,7 +36,7 @@ First, it is important to recall that this is a Linux library. It requires the f
 * Intel RAPL
 * Free IPMI
 
-On Fedora 16, you can install some of these dependencies using:
+On Fedora 40, you can install some of these dependencies using:
 
 ```bash
 # ProcPS
@@ -45,6 +45,10 @@ yum install procps-ng-devel.x86_64 procps-ng.x86_64
 yum install perf
 # SQLite
 yum install libsqlite3x.x86_64 libsqlite3x-devel.x86_64
+# ZeroMQ
+yum install cppzmq-devel.x86_64
+# JsonCPP
+yum install jsoncpp-devel.x86_64
 ```
 
 On Ubuntu 20.04:
@@ -56,6 +60,10 @@ apt install libprocps-dev libprocps8
 apt install linux-tools-common linux-tools-generic
 # SQLite
 apt install libsqlite3-dev libsqlite3-0
+# ZeroMQ
+apt install libzmqpp4 libzmqpp-dev
+# JsonCPP
+apt install libjsoncpp-dev
 ```
 
 **Optional**
@@ -102,6 +110,10 @@ T.B.D
 
 ## Usage
 
+### EfiMon Power Analyser
+
+The EfiMon Power Analyser wraps a process and perform the analysis. It is self-contained and requires root.
+
 Currently, we have been focused on an analyser for measuring the power consumption based on the histograms.
 
 ```bash
@@ -117,6 +129,57 @@ STIME=10 # Metering during 10 seconds
 # the command is time sleep 1
 sudo efimon-power-analyser -s ${STIME} -c time sleep 1
 ```
+
+### EfiMon Daemon
+
+The EfiMon Daemon is a server that performs observations of PID. It receives the information about the processes to analyse over IPC (TCP). It does require root.
+
+Example of usage:
+
+```bash
+efimon-daemon
+```
+
+It has options to:
+
+* Change the output folder for the logs (default folder: /tmp)
+* Adjust the frequency of perf
+* Adjust the delay between samples
+* Change the port of the IPC
+
+### EfiMon Launcher
+
+The EfiMon Launcher wraps an application, launching its execution or intercepting a PID. It connects to the EfiMon Daemon over IPC and extracts the analysis.
+
+It does not require root.
+
+* Example of usage (wrapper):
+
+```bash
+APP="../NanoBenchmark/cpu 11"
+
+efimon-launcher -s 10 -c ${APP}
+```
+
+It launches a command.
+
+* Example of usage (interceptor):
+
+```bash
+efimon-launcher -s 3 --pid 60603
+```
+
+It monitors an already running process.
+
+It has options to:
+
+* Save the log file in a different location
+* Adjust the frequency of perf
+* Adjust the delay between samples
+* Change the port of the IPC
+* Enable of disable perf
+
+> The launcher requires a running instance of the EfiMon Daemon
 
 ## Platforms
 
