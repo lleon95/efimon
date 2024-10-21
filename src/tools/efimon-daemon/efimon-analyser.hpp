@@ -95,11 +95,13 @@ class EfimonAnalyser {
    * @param perf ASM analyser selector. Selects between disabling or enabling
    * perf or ptrace
    * @param freq frequency of perf (if enabled)
+   * @param delay_perf time window of the instructions performed by perf
    * @return Status
    */
   Status StartWorkerThread(const std::string &name, const uint pid,
                            const uint delay, const uint samples,
-                           const uint perf = false, const uint freq = 0);
+                           const uint perf = 0, const uint freq = 0,
+                           const uint delay_perf = 1);
 
   /**
    * @brief Stops the Worker thread

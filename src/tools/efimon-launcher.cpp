@@ -41,6 +41,7 @@ struct AppData {
   uint samples = -1;
   uint delay = kDelay;
   uint perf = static_cast<uint>(EfimonWorker::NO_ASM);
+  uint delay_perf = kDelayPerf;
   std::string filename = "";
 
   // Manages the process manager
@@ -89,6 +90,9 @@ std::string get_help(char **argv) {
       "\n\t\t   1: ASM with Linux Perf"
       "\n\t\t   2: ASM with Ptrace Capstone"
       "\n\t\t";
+  msg +=
+      " -dperf,--delay-perf DELAY_SECS (default: 1 Sec). Perf analysis time"
+      " window.\n\t\t";
   msg +=
       " -o,--output PATH (default: provided by daemon). Output file of the "
       "logs\n\t\t";
@@ -154,6 +158,7 @@ Json::Value create_template(const AppData &data) {
   root["pid"] = 0;
 
   root["perf"] = data.perf;
+  root["delay-perf"] = data.delay_perf;
   root["frequency"] = data.frequency;
   root["samples"] = data.samples;
   root["delay"] = data.delay;
@@ -332,6 +337,8 @@ int main(int argc, char **argv) {
       argparser.Exists("-f") || argparser.Exists("--frequency");
   bool check_samples = argparser.Exists("-s") || argparser.Exists("--samples");
   bool check_delay = argparser.Exists("-d") || argparser.Exists("--delay");
+  bool check_delay_perf =
+      argparser.Exists("-dperf") || argparser.Exists("--delay-perf");
   bool check_help = argparser.Exists("-h") || argparser.Exists("--help");
   bool check_port = argparser.Exists("-p") || argparser.Exists("--port");
   bool check_command = argparser.Exists("-c") || argparser.Exists("--command");
@@ -384,6 +391,12 @@ int main(int argc, char **argv) {
                                          : argparser.GetOption("--delay"));
   }
 
+  if (check_delay_perf) {
+    appdata.delay_perf = std::stoi(argparser.Exists("-dperf")
+                                       ? argparser.GetOption("-dperf")
+                                       : argparser.GetOption("--delay-perf"));
+  }
+
   if (check_port) {
     appdata.port =
         std::stoi(argparser.Exists("-p") ? argparser.GetOption("-p")
@@ -404,6 +417,8 @@ int main(int argc, char **argv) {
   EFM_INFO(std::string("Frequency [Hz]: ") + std::to_string(appdata.frequency));
   EFM_INFO(std::string("Samples: ") + std::to_string(appdata.samples));
   EFM_INFO(std::string("Delay time [secs]: ") + std::to_string(appdata.delay));
+  EFM_INFO(std::string("Delay perf time [secs]: ") +
+           std::to_string(appdata.delay_perf));
   EFM_INFO(std::string("IPC TCP Port: ") + std::to_string(appdata.port));
   EFM_INFO(std::string("Perf Selector: ") + std::to_string(appdata.perf));
 

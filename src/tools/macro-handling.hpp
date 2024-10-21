@@ -14,6 +14,8 @@
 
 /** Default delay: time to wait to launch a new measurement */
 static constexpr int kDelay = 3;  // 3 seconds
+/** Default delay for perf sampling in case of a single process */
+static constexpr int kDelayPerf = 1;  // 1 seconds
 /** Default frequency for perf sampling */
 static constexpr uint kDefFrequency = 100;  // 100 Hz
 /** Default number of samples to take */
