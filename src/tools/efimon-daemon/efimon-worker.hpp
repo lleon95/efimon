@@ -89,10 +89,12 @@ class EfimonWorker {
    * @param samples number of samples to take
    * @param enable_perf enable perf for instruction analysis
    * @param freq frequency of perf sampling (if enabled)
+   * @param delay_perf time window for analysing
    * @return Status
    */
   Status Start(const uint delay, const uint samples,
-               const bool enable_perf = false, const uint freq = 0);
+               const bool enable_perf = false, const uint freq = 0,
+               const uint delay_perf = 0);
 
   /**
    * @brief Stops the worker thread

@@ -38,6 +38,7 @@ int main(int argc, char **argv) {
   uint frequency = kDefFrequency;
   uint samples = kDefaultSampleLimit;
   uint delaytime = kDelay;
+  uint delayperftime = kDelayPerf;
   std::string outputpath = kDefaultOutputPath;
   uint port = kPort;
 
@@ -48,6 +49,8 @@ int main(int argc, char **argv) {
       argparser.Exists("-f") || argparser.Exists("--frequency");
   bool check_samples = argparser.Exists("-s") || argparser.Exists("--samples");
   bool check_delay = argparser.Exists("-d") || argparser.Exists("--delay");
+  bool check_delay_perf =
+      argparser.Exists("-dperf") || argparser.Exists("--delay-perf");
   bool check_output =
       argparser.Exists("-o") || argparser.Exists("--output-folder");
   bool check_help = argparser.Exists("-h") || argparser.Exists("--help");
@@ -73,6 +76,9 @@ int main(int argc, char **argv) {
     msg += " -g,--enable-debug (default: disabled) Enable debug messages\n\t\t";
     msg +=
         " -d,--delay DELAY_SECS (default: 3 Secs). Sampling time window\n\t\t";
+    msg +=
+        " -dperf,--delay-perf DELAY_SECS (default: 1 Sec). Perf analysis time"
+        " window.\n\t\t";
     msg +=
         " -p,--port PORT (default: 5550 Secs). EfiMon Socket Port for "
         "IPC\n\t\t";
@@ -102,6 +108,12 @@ int main(int argc, char **argv) {
                                          : argparser.GetOption("--delay"));
   }
 
+  if (check_delay_perf) {
+    delayperftime = std::stoi(argparser.Exists("-dperf")
+                                  ? argparser.GetOption("-dperf")
+                                  : argparser.GetOption("--delay-perf"));
+  }
+
   if (check_port) {
     port = std::stoi(argparser.Exists("-p") ? argparser.GetOption("-p")
                                             : argparser.GetOption("--port"));
@@ -116,6 +128,8 @@ int main(int argc, char **argv) {
   EFM_INFO(std::string("Frequency [Hz]: ") + std::to_string(frequency));
   EFM_INFO(std::string("Samples: ") + std::to_string(samples));
   EFM_INFO(std::string("Delay time [secs]: ") + std::to_string(delaytime));
+  EFM_INFO(std::string("Delay perf time [secs]: ") +
+           std::to_string(delayperftime));
   EFM_INFO(std::string("Output folder: ") + outputpath);
   EFM_INFO(std::string("IPC TCP Port: ") + std::to_string(port));
   EFM_INFO(std::string("Debug Mode: ") + std::to_string(debug_mode));
@@ -185,6 +199,9 @@ int main(int argc, char **argv) {
         uint pid = root["pid"].asUInt();
         uint delay =
             root.isMember("delay") ? root["delay"].asUInt() : delaytime;
+        uint delay_perf = root.isMember("delay-perf")
+                              ? root["delay-perf"].asUInt()
+                              : delayperftime;
         bool perf = root.isMember("perf") ? root["perf"].asBool() : false;
         uint freq = root.isMember("frequency") ? root["frequency"].asUInt()
                                                : kDefFrequency;
@@ -195,8 +212,8 @@ int main(int argc, char **argv) {
                  " to: " + std::to_string(state) +
                  " with delay: " + std::to_string(delay) + " secs");
         if (state) {
-          status =
-              analyser.StartWorkerThread(name, pid, delay, samples, perf, freq);
+          status = analyser.StartWorkerThread(name, pid, delay, samples, perf,
+                                              freq, delay_perf);
         } else {
           status = analyser.StopWorkerThread(pid);
         }

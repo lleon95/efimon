@@ -61,7 +61,8 @@ EfimonWorker::EfimonWorker(EfimonWorker &&worker)
 EfimonWorker::~EfimonWorker() { this->Stop(); }
 
 Status EfimonWorker::Start(const uint delay, const uint samples,
-                           const bool enable_perf, const uint freq) {
+                           const bool enable_perf, const uint freq,
+                           const uint delay_perf) {
   if (0 == this->pid_) {
     EFM_ERROR_STATUS(
         "Invalid instance of the worker. Are you using default constructor?",
@@ -70,7 +71,8 @@ Status EfimonWorker::Start(const uint delay, const uint samples,
   EFM_INFO("Process Monitor Start for PID: " + std::to_string(this->pid_) +
            " with delay: " + std::to_string(delay) +
            " and samples: " + std::to_string(samples) + " and perf " +
-           std::to_string(enable_perf) + " at: " + std::to_string(freq));
+           std::to_string(enable_perf) + " at: " + std::to_string(freq) +
+           " with time window: " + std::to_string(delay_perf) + " secs");
   this->samples_ = samples;
   // Create observers
   this->proc_meter_ = CreateIfEnabled<ProcStatObserver, true>(

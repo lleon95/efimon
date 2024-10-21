@@ -95,11 +95,13 @@ class EfimonAnalyser {
    * @param enable_perf enable or disable perf. This enables the analysis
    * of the instructions executed by the process under analysis
    * @param freq frequency of perf (if enabled)
+   * @param delay_perf time window of the instructions performed by perf
    * @return Status
    */
   Status StartWorkerThread(const std::string &name, const uint pid,
                            const uint delay, const uint samples,
-                           const bool enable_perf = false, const uint freq = 0);
+                           const bool enable_perf = false, const uint freq = 0,
+                           const uint delay_perf = 1);
 
   /**
    * @brief Stops the Worker thread
