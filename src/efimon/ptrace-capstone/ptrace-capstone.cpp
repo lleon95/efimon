@@ -21,7 +21,6 @@
 #include <efimon/readings/instruction-readings.hpp>
 #include <efimon/status.hpp>
 #include <fstream>
-#include <iostream>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -43,6 +42,8 @@ PTraceCapstoneObserver::PTraceCapstoneObserver(const uint pid,
     : Observer{}, readings_{}, valid_{false} {
   this->pid_ = pid;
   this->interval_ = interval;
+  this->worker_running_.store(false);
+  this->worker_thread_ = nullptr;
   uint64_t type = static_cast<uint64_t>(ObserverType::CPU) |
                   static_cast<uint64_t>(ObserverType::INTERVAL) |
                   static_cast<uint64_t>(ObserverType::CPU_INSTRUCTIONS);
@@ -165,8 +166,6 @@ Status PTraceCapstoneObserver::ParseResults() {
   sloc << this->inst_;
   sloc >> assembly;
   operands = sloc.str();
-  std::cout << "Inst.Orig: " << this->inst_ << std::endl;
-  std::cout << "Inst: " << assembly << "->" << sloc.str() << std::endl;
 
   /* Classify */
   if (!this->classifier_)
@@ -232,19 +231,41 @@ Status PTraceCapstoneObserver::Trigger() {
   Status ret{};
 
   /* Clear the histogram */
-  // this->readings_.histogram.clear();
-  // this->readings_.classification.clear();
+  this->readings_.histogram.clear();
+  this->readings_.classification.clear();
 
-  /* Get the result */
-  CHECK_OR_RETURN(this->GetSample());
-  CHECK_OR_RETURN(this->DecodeSample());
-  CHECK_OR_RETURN(this->ParseResults());
+  /* Launch the worker */
+  this->worker_running_.store(true);
+  this->worker_thread_ =
+      std::make_unique<std::thread>(&PTraceCapstoneObserver::Worker, this);
 
+  /* Wait until completion */
+  std::this_thread::sleep_for(std::chrono::milliseconds(this->interval_));
+  this->worker_running_.store(false);
+  {
+    std::unique_lock lk(this->worker_mutex_);
+    this->worker_cv_.wait_for(lk, std::chrono::milliseconds(1));
+  }
+
+  this->worker_thread_->join();
+  this->worker_thread_.reset(nullptr);
+  this->NormaliseResults();
   return ret;
 }
 
+void PTraceCapstoneObserver::Worker() {
+  while (this->worker_running_.load()) {
+    std::scoped_lock lock(this->worker_mutex_);
+
+    /* Get the result */
+    this->GetSample();
+    this->DecodeSample();
+    this->ParseResults();
+  }
+}
+
 std::vector<Readings *> PTraceCapstoneObserver::GetReadings() {
-  this->NormaliseResults();
+  std::scoped_lock lock(this->worker_mutex_);
   return std::vector<Readings *>{static_cast<Readings *>(&(this->readings_))};
 }
 

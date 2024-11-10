@@ -9,6 +9,9 @@
 #ifndef INCLUDE_EFIMON_PTRACE_CAPSTONE_PTRACE_CAPSTONE_HPP_
 #define INCLUDE_EFIMON_PTRACE_CAPSTONE_PTRACE_CAPSTONE_HPP_
 
+#include <atomic>
+#include <chrono>              // NOLINT
+#include <condition_variable>  // NOLINT
 #include <efimon/asm-classifier.hpp>
 #include <efimon/observer-enums.hpp>
 #include <efimon/observer.hpp>
@@ -17,7 +20,9 @@
 #include <efimon/status.hpp>
 #include <filesystem>
 #include <memory>
+#include <mutex>  // NOLINT
 #include <string>
+#include <thread>  // NOLINT
 #include <vector>
 
 namespace efimon {
@@ -163,6 +168,14 @@ class PTraceCapstoneObserver : public Observer {
   std::string inst_;
   /** Number of samples */
   uint64_t samples_;
+  /** Threading for asynchronous execution */
+  std::unique_ptr<std::thread> worker_thread_;
+  /** Mutex for synchronisation and coherency */
+  std::mutex worker_mutex_;
+  /** Condition variable to wait for the termination */
+  std::condition_variable worker_cv_;
+  /** Flag variable to break the worker */
+  std::atomic<bool> worker_running_;
 
   /**
    * @brief Get a sample from the instruction counter
@@ -179,6 +192,9 @@ class PTraceCapstoneObserver : public Observer {
 
   /** Normalise the annotation results */
   Status NormaliseResults();
+
+  /** Worker to get samples in an asynchronous way */
+  void Worker();
 };
 
 } /* namespace efimon */

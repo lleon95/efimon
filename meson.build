@@ -151,6 +151,8 @@ else
   warning('Capstone or ptrace not found. It will disable the ptrace-capstone ASM support')
 endif
 
+project_deps += dependency('threads')
+
 # -----------------------------------------------------------------------------
 # Developer mode options
 # -----------------------------------------------------------------------------

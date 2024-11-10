@@ -24,15 +24,12 @@ int main(int argc, char **argv) {
   std::cout << "PID: " << pid << std::endl;
 
   PTraceCapstoneObserver observer{pid};
+  observer.SetInterval(1000);
 
-  uint cnt = 0;
-  while (cnt++ < 1000) {
-    auto ret = observer.Trigger();
-    if (ret.code != Status::OK) {
-      std::cerr << "ERROR: " << ret.msg << std::endl;
-      return -1;
-    }
-    usleep(1000);
+  auto ret = observer.Trigger();
+  if (ret.code != Status::OK) {
+    std::cerr << "ERROR: " << ret.msg << std::endl;
+    return -1;
   }
 
   auto readings_ann =
@@ -57,6 +54,8 @@ int main(int argc, char **argv) {
       }
     }
   }
+
+  ret = observer.Trigger();
 
   return 0;
 }
