@@ -6,6 +6,14 @@
  * @copyright Copyright (c) 2024. See License for Licensing
  */
 
+#include <capstone/capstone.h>
+#include <fcntl.h>
+#include <sys/ptrace.h>
+#include <sys/types.h>
+#include <sys/user.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
 #include <efimon/observer-enums.hpp>
 #include <efimon/observer.hpp>
 #include <efimon/ptrace-capstone/ptrace-capstone.hpp>
@@ -18,6 +26,12 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
+#define CHECK_OR_RETURN(inst)               \
+  {                                         \
+    auto ret = (inst);                      \
+    if (ret.code != Status::OK) return ret; \
+  }
 
 namespace efimon {
 
@@ -46,16 +60,192 @@ PTraceCapstoneObserver::PTraceCapstoneObserver(const uint pid,
 #else
   this->classifier_ = nullptr;
 #endif
+
+  this->Reset();
+}
+
+Status PTraceCapstoneObserver::GetSample() {
+  Status ret{};
+
+  /* Attach the ptrace to the current process */
+  if (ptrace(PTRACE_ATTACH, this->pid_, nullptr, nullptr) == -1) {
+    ret = Status{Status::ACCESS_DENIED, "Cannot attach the ptrace to the PID"};
+    return ret;
+  }
+
+  /* Watit the PID to change state */
+  waitpid(this->pid_, nullptr, 0);
+
+  /* Get the registers for the external PID */
+  struct user_regs_struct regs;
+  if (ptrace(PTRACE_GETREGS, this->pid_, nullptr, &regs) == -1) {
+    ret = Status{Status::CANNOT_OPEN, "Cannot get the registers for the PID"};
+    ptrace(PTRACE_DETACH, this->pid_, nullptr, nullptr);
+    return ret;
+  }
+
+  /* Detach after retrieving PC */
+  if (ptrace(PTRACE_DETACH, this->pid_, nullptr, nullptr) == -1) {
+    ret = Status{Status::CONFIGURATION_ERROR,
+                 "Cannot attach the ptrace to the PID"};
+    return ret;
+  }
+
+  /* TODO(lleon): Add support for other architectures */
+#if defined(__x86_64__)
+  this->pc_ = regs.rip;
+#else
+#error "Unsupported architecture"
+#endif
+
+  /* Read the memory */
+  char filename[64];
+  snprintf(filename, sizeof(filename), "/proc/%d/mem", this->pid_);
+  int fd = open(filename, O_RDONLY);
+  if (fd == -1) {
+    ret = Status{Status::CANNOT_OPEN,
+                 "The memory from the target proccess cannot be opened"};
+    return ret;
+  }
+  ssize_t size = sizeof(this->pc_inst_mem_);
+  if (pread(fd, this->pc_inst_mem_, size, this->pc_) != size) {
+    ret = Status{Status::CANNOT_OPEN,
+                 "The memory from the target proccess cannot be read"};
+    close(fd);
+    return ret;
+  }
+
+  close(fd);
+  return ret;
+}
+
+Status PTraceCapstoneObserver::DecodeSample() {
+  Status ret{};
+
+  csh handle = 0;
+  cs_insn *insn = nullptr;
+  size_t count = 0;
+
+  if (cs_open(CS_ARCH_X86, CS_MODE_64, &handle) != CS_ERR_OK) {
+    ret = Status{Status::CONFIGURATION_ERROR, "Cannot initialise Capstone"};
+    return ret;
+  }
+
+  /* Switch to AT&T for the syntax */
+  cs_option(handle, CS_OPT_SYNTAX, CS_OPT_SYNTAX_ATT);
+
+  count = cs_disasm(handle, this->pc_inst_mem_, sizeof(this->pc_inst_mem_),
+                    this->pc_, 1, &insn);
+
+  if (count <= 0) {
+    ret = Status{Status::CANNOT_OPEN, "Cannot decode the instruction"};
+  } else {
+    this->inst_ =
+        std::string(insn[0].mnemonic) + " " + std::string(insn[0].op_str);
+    cs_free(insn, count);
+  }
+
+  cs_close(&handle);
+  return ret;
+}
+
+Status PTraceCapstoneObserver::ParseResults() {
+  /* Read the file line by line */
+  std::string line;
+
+  /* Intermediate */
+  std::stringstream sloc;
+  std::string drop;
+  std::string operands;
+
+  /* Variables of interest */
+  this->samples_++;
+  std::string assembly;
+
+  sloc << this->inst_;
+  sloc >> assembly;
+  operands = sloc.str();
+  std::cout << "Inst.Orig: " << this->inst_ << std::endl;
+  std::cout << "Inst: " << assembly << "->" << sloc.str() << std::endl;
+
+  /* Classify */
+  if (!this->classifier_)
+    return Status{Status::MEMBER_ABSENT, "Cannot get classifier"};
+  std::string optypes = this->classifier_->OperandTypes(operands);
+  InstructionPair classification =
+      this->classifier_->Classify(assembly, optypes);
+  assembly += std::string("_") + optypes;
+
+  /* Add to the histogram */
+  if (this->readings_.histogram.find(assembly) ==
+      this->readings_.histogram.end()) {
+    this->readings_.histogram[assembly] = 0;
+  }
+
+  /* Handle the creation of the maps */
+  bool family_found =
+      this->readings_.classification[std::get<0>(classification)].find(
+          std::get<1>(classification)) !=
+      this->readings_.classification[std::get<0>(classification)].end();
+  if (!family_found) {
+    this->readings_.classification[std::get<0>(classification)]
+                                  [std::get<1>(classification)] = {};
+  }
+  bool origin_found = this->readings_
+                          .classification[std::get<0>(classification)]
+                                         [std::get<1>(classification)]
+                          .find(std::get<2>(classification)) !=
+                      this->readings_
+                          .classification[std::get<0>(classification)]
+                                         [std::get<1>(classification)]
+                          .end();
+  if (!origin_found) {
+    this->readings_.classification[std::get<0>(classification)][std::get<1>(
+        classification)][std::get<2>(classification)] = 0.f;
+  }
+
+  this->readings_.classification[std::get<0>(classification)][std::get<1>(
+      classification)][std::get<2>(classification)] += 1.f;
+  this->readings_.histogram[assembly] += 1.f;
+
+  this->valid_ = true;
+  return Status{};
+}
+
+Status PTraceCapstoneObserver::NormaliseResults() {
+  for (auto &pair : this->readings_.histogram) {
+    pair.second /= this->samples_;
+  }
+
+  for (auto &type : this->readings_.classification) {
+    for (auto &family : type.second) {
+      for (auto &origin : family.second) {
+        origin.second /= this->samples_;
+      }
+    }
+  }
+
+  return Status{};
 }
 
 Status PTraceCapstoneObserver::Trigger() {
   Status ret{};
 
+  /* Clear the histogram */
+  // this->readings_.histogram.clear();
+  // this->readings_.classification.clear();
+
+  /* Get the result */
+  CHECK_OR_RETURN(this->GetSample());
+  CHECK_OR_RETURN(this->DecodeSample());
+  CHECK_OR_RETURN(this->ParseResults());
+
   return ret;
 }
 
-std::vector<Readings*> PTraceCapstoneObserver::GetReadings() {
-  return std::vector<Readings*>{static_cast<Readings*>(&(this->readings_))};
+std::vector<Readings *> PTraceCapstoneObserver::GetReadings() {
+  this->NormaliseResults();
+  return std::vector<Readings *>{static_cast<Readings *>(&(this->readings_))};
 }
 
 Status PTraceCapstoneObserver::SelectDevice(const uint /* device */) {
@@ -81,8 +271,8 @@ ObserverScope PTraceCapstoneObserver::GetScope() const noexcept {
 
 uint PTraceCapstoneObserver::GetPID() const noexcept { return this->pid_; }
 
-const std::vector<ObserverCapabilities>&
-PTraceCapstoneObserver::GetCapabilities() const noexcept {
+const std::vector<ObserverCapabilities>
+    &PTraceCapstoneObserver::GetCapabilities() const noexcept {
   return this->caps_;
 }
 
@@ -103,6 +293,11 @@ Status PTraceCapstoneObserver::Reset() {
   this->readings_.difference = 0;
   this->valid_ = false;
   this->readings_.type = static_cast<int>(ObserverType::CPU);
+
+  /* Clear the histogram */
+  this->readings_.histogram.clear();
+  this->readings_.classification.clear();
+  this->samples_ = 0;
   return Status{};
 }
 
