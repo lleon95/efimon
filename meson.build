@@ -138,7 +138,18 @@ else
 endif
 
 # Verify Capstone and Ptrace
-enable_ptrace_capstone = true
+enable_ptrace_capstone = false
+capstone_dep = dependency('capstone', required: false)
+ptrace_header_check = cpp.has_header('sys/ptrace.h', required: false)
+if capstone_dep.found() and ptrace_header_check
+  message('Capstone and Ptrace Found. Enabling')
+  enable_ptrace_capstone = true
+  project_deps += [capstone_dep]
+  c_args += ['-DENABLE_PTRACE_CAPSTONE']
+  cpp_args += ['-DENABLE_PTRACE_CAPSTONE']
+else
+  warning('Capstone or ptrace not found. It will disable the ptrace-capstone ASM support')
+endif
 
 # -----------------------------------------------------------------------------
 # Developer mode options
