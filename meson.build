@@ -137,6 +137,9 @@ else
   warning('JSONCPP not found. It will disabled the efimon-daemon and some examples')
 endif
 
+# Verify Capstone and Ptrace
+enable_ptrace_capstone = true
+
 # -----------------------------------------------------------------------------
 # Developer mode options
 # -----------------------------------------------------------------------------
