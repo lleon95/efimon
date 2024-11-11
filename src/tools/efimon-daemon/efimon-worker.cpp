@@ -14,6 +14,7 @@
 #include <efimon/perf/annotate.hpp>
 #include <efimon/perf/record.hpp>
 #include <efimon/proc/stat.hpp>
+#include <efimon/ptrace-capstone/ptrace-capstone.hpp>
 #include <unordered_map>
 
 #include "efimon-daemon/efimon-analyser.hpp"  // NOLINT
@@ -30,7 +31,8 @@ EfimonWorker::EfimonWorker()
       thread_{nullptr},
       proc_meter_{nullptr},
       perf_record_meter_{nullptr},
-      perf_annotate_meter_{nullptr} {}
+      perf_annotate_meter_{nullptr},
+      ptrace_meter_{nullptr} {}
 
 EfimonWorker::EfimonWorker(const std::string &name, const uint pid,
                            EfimonAnalyser *analyser)
@@ -42,7 +44,8 @@ EfimonWorker::EfimonWorker(const std::string &name, const uint pid,
       thread_{nullptr},
       proc_meter_{nullptr},
       perf_record_meter_{nullptr},
-      perf_annotate_meter_{nullptr} {}
+      perf_annotate_meter_{nullptr},
+      ptrace_meter_{nullptr} {}
 
 EfimonWorker::EfimonWorker(EfimonWorker &&worker)
     : name_{std::move(worker.name_)},
@@ -53,7 +56,8 @@ EfimonWorker::EfimonWorker(EfimonWorker &&worker)
       thread_{nullptr},
       proc_meter_{std::move(worker.proc_meter_)},
       perf_record_meter_{std::move(worker.perf_record_meter_)},
-      perf_annotate_meter_{std::move(worker.perf_annotate_meter_)} {
+      perf_annotate_meter_{std::move(worker.perf_annotate_meter_)},
+      ptrace_meter_{std::move(worker.ptrace_meter_)} {
   this->running_.store(worker.running_.load());
   this->thread_.swap(worker.thread_);
 }
@@ -61,7 +65,7 @@ EfimonWorker::EfimonWorker(EfimonWorker &&worker)
 EfimonWorker::~EfimonWorker() { this->Stop(); }
 
 Status EfimonWorker::Start(const uint delay, const uint samples,
-                           const bool enable_perf, const uint freq) {
+                           const uint perf, const uint freq) {
   if (0 == this->pid_) {
     EFM_ERROR_STATUS(
         "Invalid instance of the worker. Are you using default constructor?",
@@ -70,12 +74,13 @@ Status EfimonWorker::Start(const uint delay, const uint samples,
   EFM_INFO("Process Monitor Start for PID: " + std::to_string(this->pid_) +
            " with delay: " + std::to_string(delay) +
            " and samples: " + std::to_string(samples) + " and perf " +
-           std::to_string(enable_perf) + " at: " + std::to_string(freq));
+           std::to_string(perf) + " at: " + std::to_string(freq));
   this->samples_ = samples;
   // Create observers
   this->proc_meter_ = CreateIfEnabled<ProcStatObserver, true>(
       this->pid_, efimon::ObserverScope::PROCESS, delay);
-  if (enable_perf) {
+  if (ASM_WITH_PERF == perf) {
+    EFM_INFO("Process Monitor Start using Linux Perf");
 #ifdef ENABLE_PERF
     auto perf_record_meter_iface = std::make_shared<PerfRecordObserver>(
         this->pid_, efimon::ObserverScope::PROCESS, delay, freq, true);
@@ -85,6 +90,14 @@ Status EfimonWorker::Start(const uint delay, const uint samples,
 #else
     this->perf_record_meter_ = nullptr;
     this->perf_annotate_meter_ = nullptr;
+#endif
+  } else if (ASM_WITH_PTRACE == perf) {
+    EFM_INFO("Process Monitor Start using PTrace-Capstone");
+#ifdef ENABLE_PTRACE_CAPSTONE
+    this->ptrace_meter_ = std::make_shared<PTraceCapstoneObserver>(
+        this->pid_, efimon::ObserverScope::PROCESS, delay * 1000);
+#else
+    this->ptrace_meter_ = nullptr;
 #endif
   }
 
@@ -111,6 +124,7 @@ Status EfimonWorker::Stop() {
   this->proc_meter_.reset();
   this->perf_record_meter_.reset();
   this->perf_annotate_meter_.reset();
+  this->ptrace_meter_.reset();
   this->cpu_usage_ = nullptr;
   this->instructions_samples_ = nullptr;
 
@@ -133,11 +147,16 @@ void EfimonWorker::ProcStatsWorker(const uint delay) {
       GetReadingsIfEnabled<CPUReadings, true>(this->proc_meter_, 0);
   this->log_table_.clear();
 
-  enabled_perf = this->perf_annotate_meter_ != nullptr;
-  if (enabled_perf) {
+  enabled_perf =
+      this->perf_annotate_meter_ != nullptr || this->ptrace_meter_ != nullptr;
+
+  if (this->perf_annotate_meter_ != nullptr) {
     this->instructions_samples_ =
         GetReadingsIfEnabled<InstructionReadings, true>(
             this->perf_annotate_meter_, 0);
+  } else if (this->ptrace_meter_ != nullptr) {
+    this->instructions_samples_ =
+        GetReadingsIfEnabled<InstructionReadings, true>(this->ptrace_meter_, 0);
   }
   enabled_samples = this->samples_ != 0;
   this->mutex_.unlock();
@@ -178,6 +197,7 @@ Status EfimonWorker::RefreshProcStat() {
   EFM_CHECK_STATUS(TriggerIfEnabled(this->proc_meter_));
   EFM_CHECK_STATUS(TriggerIfEnabled(this->perf_record_meter_));
   EFM_CHECK_STATUS(TriggerIfEnabled(this->perf_annotate_meter_));
+  EFM_CHECK_STATUS(TriggerIfEnabled(this->ptrace_meter_));
   return Status{};
 }
 
@@ -229,8 +249,9 @@ Status EfimonWorker::CreateLogTable() {
   }
 #endif
 
-#ifdef ENABLE_PERF
-  if (this->perf_record_meter_ && this->perf_annotate_meter_) {
+#if defined(ENABLE_PERF) || defined(ENABLE_PTRACE_CAPSTONE)
+  if ((this->perf_record_meter_ && this->perf_annotate_meter_) ||
+      this->ptrace_meter_) {
     for (uint itype = 0;
          itype <= static_cast<uint>(assembly::InstructionType::UNCLASSIFIED);
          ++itype) {
@@ -327,8 +348,9 @@ Status EfimonWorker::LogReadings(CSVLogger &logger) {  // NOLINT
   }
 #endif
 
-#ifdef ENABLE_PERF
-  if (this->perf_record_meter_ && this->perf_annotate_meter_) {
+#if defined(ENABLE_PERF) || defined(ENABLE_PTRACE_CAPSTONE)
+  if ((this->perf_record_meter_ && this->perf_annotate_meter_) ||
+      this->ptrace_meter_) {
     for (uint itype = 0;
          itype <= static_cast<uint>(assembly::InstructionType::UNCLASSIFIED);
          ++itype) {

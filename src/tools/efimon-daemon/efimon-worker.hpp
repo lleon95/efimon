@@ -44,6 +44,14 @@ class EfimonAnalyser;
  */
 class EfimonWorker {
  public:
+  enum {
+    /** No assembly */
+    NO_ASM = 0,
+    /** Get the assembly code with perf */
+    ASM_WITH_PERF,
+    /** Get the assembly code with ptrace-capstone */
+    ASM_WITH_PTRACE
+  };
   /**
    * @brief Construct a new Efimon Worker
    *
@@ -87,12 +95,12 @@ class EfimonWorker {
    *
    * @param delay how often to take measurements in seconds
    * @param samples number of samples to take
-   * @param enable_perf enable perf for instruction analysis
+   * @param perf perf selector for instruction analysis
    * @param freq frequency of perf sampling (if enabled)
    * @return Status
    */
-  Status Start(const uint delay, const uint samples,
-               const bool enable_perf = false, const uint freq = 0);
+  Status Start(const uint delay, const uint samples, const uint perf = NO_ASM,
+               const uint freq = 0);
 
   /**
    * @brief Stops the worker thread
@@ -140,6 +148,8 @@ class EfimonWorker {
   std::shared_ptr<Observer> perf_record_meter_;
   /** Observer for perf annotate */
   std::shared_ptr<Observer> perf_annotate_meter_;
+  /** Observer for ptrace */
+  std::shared_ptr<Observer> ptrace_meter_;
 
   /** Mutex for thread-safety */
   std::mutex mutex_;

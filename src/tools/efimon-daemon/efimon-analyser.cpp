@@ -76,8 +76,7 @@ Status EfimonAnalyser::StartSystemThread(const uint delay) {
 
 Status EfimonAnalyser::StartWorkerThread(const std::string &name,
                                          const uint pid, const uint delay,
-                                         const uint samples,
-                                         const bool enable_perf,
+                                         const uint samples, const uint perf,
                                          const uint freq) {
   if (this->proc_workers_.end() != this->proc_workers_.find(pid)) {
     return Status{Status::RESOURCE_BUSY,
@@ -96,7 +95,7 @@ Status EfimonAnalyser::StartWorkerThread(const std::string &name,
   }
 
   EFM_INFO("Starting Process Monitor for PID: " + std::to_string(pid));
-  return this->proc_workers_[pid]->Start(delay, samples, enable_perf, freq);
+  return this->proc_workers_[pid]->Start(delay, samples, perf, freq);
 }
 
 Status EfimonAnalyser::CheckWorkerThread(const uint pid) {

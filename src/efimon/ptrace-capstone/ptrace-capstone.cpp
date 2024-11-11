@@ -204,8 +204,8 @@ Status PTraceCapstoneObserver::ParseResults() {
   }
 
   this->readings_.classification[std::get<0>(classification)][std::get<1>(
-      classification)][std::get<2>(classification)] += 1.f;
-  this->readings_.histogram[assembly] += 1.f;
+      classification)][std::get<2>(classification)] += 100.f;
+  this->readings_.histogram[assembly] += 100.f;
 
   this->valid_ = true;
   return Status{};
@@ -233,6 +233,7 @@ Status PTraceCapstoneObserver::Trigger() {
   /* Clear the histogram */
   this->readings_.histogram.clear();
   this->readings_.classification.clear();
+  this->samples_ = 0;
 
   /* Launch the worker */
   this->worker_running_.store(true);
