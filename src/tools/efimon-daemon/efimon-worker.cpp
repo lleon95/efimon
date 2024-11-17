@@ -66,7 +66,7 @@ EfimonWorker::~EfimonWorker() { this->Stop(); }
 
 Status EfimonWorker::Start(const uint delay, const uint samples,
                            const uint perf, const uint freq,
-                           const uint delay_perf) {
+                           const uint delay_perf, const int children) {
   if (0 == this->pid_) {
     EFM_ERROR_STATUS(
         "Invalid instance of the worker. Are you using default constructor?",
@@ -76,6 +76,7 @@ Status EfimonWorker::Start(const uint delay, const uint samples,
            " with delay: " + std::to_string(delay) +
            " and samples: " + std::to_string(samples) + " and perf " +
            std::to_string(perf) + " at: " + std::to_string(freq) +
+           " and children under analysis: " + std::to_string(children) +
            " with time window: " + std::to_string(delay_perf) + " secs");
   this->samples_ = samples;
   // Create observers

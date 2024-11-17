@@ -41,6 +41,7 @@ int main(int argc, char **argv) {
   uint delayperftime = kDelayPerf;
   std::string outputpath = kDefaultOutputPath;
   uint port = kPort;
+  int globalchildren = 0;
 
   // ------------ Arguments ------------
   ArgParser argparser(argc, argv);
@@ -55,6 +56,8 @@ int main(int argc, char **argv) {
       argparser.Exists("-o") || argparser.Exists("--output-folder");
   bool check_help = argparser.Exists("-h") || argparser.Exists("--help");
   bool check_port = argparser.Exists("-p") || argparser.Exists("--port");
+  bool check_children =
+      argparser.Exists("-children") || argparser.Exists("--children");
   bool debug_mode =
       argparser.Exists("-g") || argparser.Exists("--enable-debug");
 
@@ -73,6 +76,10 @@ int main(int argc, char **argv) {
     msg +=
         " -f,--frequency FREQUENCY_HZ (default: 100 Hz). Sampling "
         "frequency\n\t\t";
+    msg +=
+        " -children,--children NUM. Number of children to analyse. This option "
+        "allows to analyse children and how many. To analyse all, use -1. "
+        "To analyse only the parent, use 0.\n\t\t";
     msg += " -g,--enable-debug (default: disabled) Enable debug messages\n\t\t";
     msg +=
         " -d,--delay DELAY_SECS (default: 3 Secs). Sampling time window\n\t\t";
@@ -119,6 +126,12 @@ int main(int argc, char **argv) {
                                             : argparser.GetOption("--port"));
   }
 
+  if (check_children) {
+    globalchildren = std::stoi(argparser.Exists("-children")
+                                   ? argparser.GetOption("-children")
+                                   : argparser.GetOption("--children"));
+  }
+
   if (check_output) {
     outputpath = argparser.Exists("-o")
                      ? argparser.GetOption("-o")
@@ -132,6 +145,8 @@ int main(int argc, char **argv) {
            std::to_string(delayperftime));
   EFM_INFO(std::string("Output folder: ") + outputpath);
   EFM_INFO(std::string("IPC TCP Port: ") + std::to_string(port));
+  EFM_INFO(std::string("Children to analyse: ") +
+           std::to_string(globalchildren));
   EFM_INFO(std::string("Debug Mode: ") + std::to_string(debug_mode));
 
   // ---------- Initialise ZeroMQ ------------
@@ -203,8 +218,10 @@ int main(int argc, char **argv) {
                         ? root["perf"].asUInt()
                         : static_cast<uint>(EfimonWorker::NO_ASM);
         uint delay_perf = root.isMember("delay-perf")
-                        ? root["delay-perf"].asUInt()
-                        : delayperftime;
+                              ? root["delay-perf"].asUInt()
+                              : delayperftime;
+        int children = root.isMember("children") ? root["children"].asInt()
+                                                 : globalchildren;
         uint freq = root.isMember("frequency") ? root["frequency"].asUInt()
                                                : kDefFrequency;
         uint samples = root.isMember("samples") ? root["samples"].asUInt() : 0;
@@ -215,7 +232,7 @@ int main(int argc, char **argv) {
                  " with delay: " + std::to_string(delay) + " secs");
         if (state) {
           status = analyser.StartWorkerThread(name, pid, delay, samples, perf,
-                                              freq, delay_perf);
+                                              freq, delay_perf, children);
         } else {
           status = analyser.StopWorkerThread(pid);
         }

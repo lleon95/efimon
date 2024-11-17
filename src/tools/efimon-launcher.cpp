@@ -42,6 +42,7 @@ struct AppData {
   uint delay = kDelay;
   uint perf = static_cast<uint>(EfimonWorker::NO_ASM);
   uint delay_perf = kDelayPerf;
+  int children = 0;
   std::string filename = "";
 
   // Manages the process manager
@@ -84,6 +85,10 @@ std::string get_help(char **argv) {
   msg +=
       " -pid,--pid PID. PID to attach to. This option must be at "
       "the end of the launcher command\n\t\t";
+  msg +=
+      " -children,--children NUM. Number of children to analyse. This option "
+      "allows to analyse children and how many. To analyse all, use -1. "
+      "To analyse only the parent, use 0.\n\t\t";
   msg +=
       " -perf,--select-perf Enable the asm analyser to get the profiles."
       "\n\t\t   0: No ASM"
@@ -162,6 +167,8 @@ Json::Value create_template(const AppData &data) {
   root["frequency"] = data.frequency;
   root["samples"] = data.samples;
   root["delay"] = data.delay;
+
+  root["children"] = data.children;
 
   return root;
 }
@@ -342,6 +349,8 @@ int main(int argc, char **argv) {
   bool check_help = argparser.Exists("-h") || argparser.Exists("--help");
   bool check_port = argparser.Exists("-p") || argparser.Exists("--port");
   bool check_command = argparser.Exists("-c") || argparser.Exists("--command");
+  bool check_children =
+      argparser.Exists("-children") || argparser.Exists("--children");
   bool check_pid = argparser.Exists("-pid") || argparser.Exists("--pid");
   bool check_perf =
       argparser.Exists("-perf") || argparser.Exists("--select-perf");
@@ -403,6 +412,12 @@ int main(int argc, char **argv) {
                                          : argparser.GetOption("--port"));
   }
 
+  if (check_children) {
+    appdata.children = std::stoi(argparser.Exists("-children")
+                                     ? argparser.GetOption("-children")
+                                     : argparser.GetOption("--children"));
+  }
+
   if (check_output) {
     appdata.filename = argparser.Exists("-o") ? argparser.GetOption("-")
                                               : argparser.GetOption("--output");
@@ -421,6 +436,8 @@ int main(int argc, char **argv) {
            std::to_string(appdata.delay_perf));
   EFM_INFO(std::string("IPC TCP Port: ") + std::to_string(appdata.port));
   EFM_INFO(std::string("Perf Selector: ") + std::to_string(appdata.perf));
+  EFM_INFO(std::string("Children under Analysis: ") +
+           std::to_string(appdata.children));
 
   // Launch the Process
   appdata.terminated.store(false);

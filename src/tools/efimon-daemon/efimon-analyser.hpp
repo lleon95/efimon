@@ -96,12 +96,13 @@ class EfimonAnalyser {
    * perf or ptrace
    * @param freq frequency of perf (if enabled)
    * @param delay_perf time window of the instructions performed by perf
+   * @param children number of children to analyse within the current process
    * @return Status
    */
   Status StartWorkerThread(const std::string &name, const uint pid,
                            const uint delay, const uint samples,
                            const uint perf = 0, const uint freq = 0,
-                           const uint delay_perf = 1);
+                           const uint delay_perf = 1, const int children = 0);
 
   /**
    * @brief Stops the Worker thread
