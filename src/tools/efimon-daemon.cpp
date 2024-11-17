@@ -185,7 +185,9 @@ int main(int argc, char **argv) {
         uint pid = root["pid"].asUInt();
         uint delay =
             root.isMember("delay") ? root["delay"].asUInt() : delaytime;
-        bool perf = root.isMember("perf") ? root["perf"].asBool() : false;
+        uint perf = root.isMember("perf")
+                        ? root["perf"].asUInt()
+                        : static_cast<uint>(EfimonWorker::NO_ASM);
         uint freq = root.isMember("frequency") ? root["frequency"].asUInt()
                                                : kDefFrequency;
         uint samples = root.isMember("samples") ? root["samples"].asUInt() : 0;

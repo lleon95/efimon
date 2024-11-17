@@ -39,6 +39,12 @@ if enable_perf
   ]
 endif
 
+if enable_ptrace_capstone
+  lib_efimon_sources += [
+    files('ptrace-capstone/ptrace-capstone.cpp'),
+  ]
+endif
+
 if enable_pcm
   lib_efimon_sources += [
     files('power/intel.cpp'),

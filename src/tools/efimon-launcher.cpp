@@ -24,7 +24,8 @@
 #include <thread>  // NOLINT
 #include <zmq.hpp>
 
-#include "macro-handling.hpp"  // NOLINT
+#include "efimon-daemon/efimon-worker.hpp"  // NOLINT
+#include "macro-handling.hpp"               // NOLINT
 
 static constexpr int kThreadCheckTime = 10;   // 10 millis
 static constexpr int kThreadStartUpTime = 3;  // 3 seconds
@@ -39,7 +40,7 @@ struct AppData {
   uint frequency = kDefFrequency;
   uint samples = -1;
   uint delay = kDelay;
-  bool enable_perf = false;
+  uint perf = static_cast<uint>(EfimonWorker::NO_ASM);
   std::string filename = "";
 
   // Manages the process manager
@@ -83,7 +84,10 @@ std::string get_help(char **argv) {
       " -pid,--pid PID. PID to attach to. This option must be at "
       "the end of the launcher command\n\t\t";
   msg +=
-      " -perf,--enable-perf Enable Linux Perf to get the sampling profiles"
+      " -perf,--select-perf Enable the asm analyser to get the profiles."
+      "\n\t\t   0: No ASM"
+      "\n\t\t   1: ASM with Linux Perf"
+      "\n\t\t   2: ASM with Ptrace Capstone"
       "\n\t\t";
   msg +=
       " -o,--output PATH (default: provided by daemon). Output file of the "
@@ -149,7 +153,7 @@ Json::Value create_template(const AppData &data) {
   root["state"] = true;
   root["pid"] = 0;
 
-  root["perf"] = data.enable_perf;
+  root["perf"] = data.perf;
   root["frequency"] = data.frequency;
   root["samples"] = data.samples;
   root["delay"] = data.delay;
@@ -333,7 +337,7 @@ int main(int argc, char **argv) {
   bool check_command = argparser.Exists("-c") || argparser.Exists("--command");
   bool check_pid = argparser.Exists("-pid") || argparser.Exists("--pid");
   bool check_perf =
-      argparser.Exists("-perf") || argparser.Exists("--enable-perf");
+      argparser.Exists("-perf") || argparser.Exists("--select-perf");
   bool check_output = argparser.Exists("-o") || argparser.Exists("--output");
 
   if (check_help) {
@@ -391,12 +395,17 @@ int main(int argc, char **argv) {
                                               : argparser.GetOption("--output");
   }
 
-  appdata.enable_perf = check_perf;
+  if (check_perf) {
+    appdata.perf = std::stoi(argparser.Exists("-perf")
+                                 ? argparser.GetOption("-perf")
+                                 : argparser.GetOption("--select-perf"));
+  }
 
   EFM_INFO(std::string("Frequency [Hz]: ") + std::to_string(appdata.frequency));
   EFM_INFO(std::string("Samples: ") + std::to_string(appdata.samples));
   EFM_INFO(std::string("Delay time [secs]: ") + std::to_string(appdata.delay));
   EFM_INFO(std::string("IPC TCP Port: ") + std::to_string(appdata.port));
+  EFM_INFO(std::string("Perf Selector: ") + std::to_string(appdata.perf));
 
   // Launch the Process
   appdata.terminated.store(false);

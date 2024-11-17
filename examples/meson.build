@@ -128,3 +128,15 @@ if enable_zeromq and enable_jsoncpp
             install : false,
   )
 endif
+
+if enable_ptrace_capstone
+  executable('ptrace-capstone-testing',
+            [
+              files('ptrace-capstone-testing.cpp')
+            ],
+            cpp_args : cpp_args,
+            include_directories : [project_inc],
+            dependencies: [project_deps, libefimon_dep],
+            install : false,
+  )
+endif
