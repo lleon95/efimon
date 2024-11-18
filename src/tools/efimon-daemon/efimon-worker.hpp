@@ -15,6 +15,7 @@
 #include <efimon/logger/csv.hpp>
 #include <efimon/logger/macros.hpp>
 #include <efimon/observer.hpp>
+#include <efimon/proc/process-tree.hpp>
 #include <efimon/readings/cpu-readings.hpp>
 #include <efimon/readings/instruction-readings.hpp>
 #include <efimon/status.hpp>
@@ -22,6 +23,7 @@
 #include <mutex>  // NOLINT
 #include <string>
 #include <thread>  // NOLINT
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -143,29 +145,31 @@ class EfimonWorker {
   EfimonAnalyser *analyser_;
   /** Worker Thread */
   std::unique_ptr<std::thread> thread_;
+  /** Process tree instance */
+  std::unique_ptr<ProcessTree> tree_;
 
   // Meter Instances
   /** Observer for procstat */
-  std::shared_ptr<Observer> proc_meter_;
+  std::unordered_map<int, std::shared_ptr<Observer>> proc_meter_;
   /** Observer for perf record */
-  std::shared_ptr<Observer> perf_record_meter_;
+  std::unordered_map<int, std::shared_ptr<Observer>> perf_record_meter_;
   /** Observer for perf annotate */
-  std::shared_ptr<Observer> perf_annotate_meter_;
+  std::unordered_map<int, std::shared_ptr<Observer>> perf_annotate_meter_;
   /** Observer for ptrace */
-  std::shared_ptr<Observer> ptrace_meter_;
+  std::unordered_map<int, std::shared_ptr<Observer>> ptrace_meter_;
 
   /** Mutex for thread-safety */
   std::mutex mutex_;
 
   // Result instances
   /** CPU readings instance for procstat */
-  CPUReadings *cpu_usage_;
+  std::unordered_map<int, CPUReadings *> cpu_usage_;
   /** Instructions readings instance for perf */
-  InstructionReadings *instructions_samples_;
+  std::unordered_map<int, InstructionReadings *> instructions_samples_;
 
   // Refresh functions
   /** Refresh the procstat measurements */
-  Status RefreshProcStat();
+  Status RefreshProcStat(const int pid);
 
   // Auxiliary logging functions
   /** Log table with all fields required by a log line */
@@ -173,11 +177,11 @@ class EfimonWorker {
   /** Create the log table structure, leading to log_table_ */
   Status CreateLogTable();
   /** Register the logs and writes the CSV file */
-  Status LogReadings(CSVLogger &logger);  // NOLINT
+  Status LogReadings(CSVLogger &logger, const int pid);  // NOLINT
 
   // Workers
   /** Worker function */
-  void ProcStatsWorker(const uint delay);
+  void ProcStatsWorker(const uint delay, const std::vector<int> &pids);
 };
 }  // namespace efimon
 

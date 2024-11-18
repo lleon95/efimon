@@ -13,6 +13,7 @@
 #include <efimon/logger/macros.hpp>
 #include <efimon/perf/annotate.hpp>
 #include <efimon/perf/record.hpp>
+#include <efimon/proc/process-tree.hpp>
 #include <efimon/proc/stat.hpp>
 #include <efimon/ptrace-capstone/ptrace-capstone.hpp>
 #include <unordered_map>
@@ -29,10 +30,11 @@ EfimonWorker::EfimonWorker()
       running_{false},
       analyser_{nullptr},
       thread_{nullptr},
-      proc_meter_{nullptr},
-      perf_record_meter_{nullptr},
-      perf_annotate_meter_{nullptr},
-      ptrace_meter_{nullptr} {}
+      tree_{nullptr},
+      proc_meter_{},
+      perf_record_meter_{},
+      perf_annotate_meter_{},
+      ptrace_meter_{} {}
 
 EfimonWorker::EfimonWorker(const std::string &name, const uint pid,
                            EfimonAnalyser *analyser)
@@ -42,10 +44,11 @@ EfimonWorker::EfimonWorker(const std::string &name, const uint pid,
       running_{false},
       analyser_{analyser},
       thread_{nullptr},
-      proc_meter_{nullptr},
-      perf_record_meter_{nullptr},
-      perf_annotate_meter_{nullptr},
-      ptrace_meter_{nullptr} {}
+      tree_{nullptr},
+      proc_meter_{},
+      perf_record_meter_{},
+      perf_annotate_meter_{},
+      ptrace_meter_{} {}
 
 EfimonWorker::EfimonWorker(EfimonWorker &&worker)
     : name_{std::move(worker.name_)},
@@ -54,6 +57,7 @@ EfimonWorker::EfimonWorker(EfimonWorker &&worker)
       running_{false},
       analyser_{std::move(worker.analyser_)},
       thread_{nullptr},
+      tree_{nullptr},
       proc_meter_{std::move(worker.proc_meter_)},
       perf_record_meter_{std::move(worker.perf_record_meter_)},
       perf_annotate_meter_{std::move(worker.perf_annotate_meter_)},
@@ -72,40 +76,53 @@ Status EfimonWorker::Start(const uint delay, const uint samples,
         "Invalid instance of the worker. Are you using default constructor?",
         Status::CANNOT_OPEN);
   }
+
+  // Get the process tree looking for children
+  this->tree_ = std::make_unique<ProcessTree>(this->pid_);
+  EFM_CHECK_STATUS(this->tree_->Refresh());
+  auto children_pids = this->tree_->GetTree();
+  int total_children = static_cast<int>(children_pids.size()) - 1;
+  int analysis_children = children == -1 ? total_children : children;
+
   EFM_INFO("Process Monitor Start for PID: " + std::to_string(this->pid_) +
-           " with delay: " + std::to_string(delay) +
-           " and samples: " + std::to_string(samples) + " and perf " +
-           std::to_string(perf) + " at: " + std::to_string(freq) +
-           " and children under analysis: " + std::to_string(children) +
+           " with delay: " + std::to_string(delay) + " and samples: " +
+           std::to_string(samples) + " and perf " + std::to_string(perf) +
+           " at: " + std::to_string(freq) + " and children under analysis: " +
+           std::to_string(analysis_children) + "/" +
+           std::to_string(total_children) +
            " with time window: " + std::to_string(delay_perf) + " secs");
+  // TODO(lleon): Add children implementation
   this->samples_ = samples;
+
   // Create observers
-  this->proc_meter_ = CreateIfEnabled<ProcStatObserver, true>(
-      this->pid_, efimon::ObserverScope::PROCESS, delay);
-  if (ASM_WITH_PERF == perf) {
-    EFM_INFO("Process Monitor Start using Linux Perf");
+  for (const int pid : children_pids) {
+    this->proc_meter_[pid] = CreateIfEnabled<ProcStatObserver, true>(
+        pid, efimon::ObserverScope::PROCESS, delay);
+    if (ASM_WITH_PERF == perf) {
+      EFM_INFO("Process Monitor Start using Linux Perf");
 #ifdef ENABLE_PERF
-    auto perf_record_meter_iface = std::make_shared<PerfRecordObserver>(
-        this->pid_, efimon::ObserverScope::PROCESS, delay, freq, true);
-    this->perf_record_meter_ = perf_record_meter_iface;
-    this->perf_annotate_meter_ =
-        std::make_shared<PerfAnnotateObserver>(*perf_record_meter_iface);
+      auto perf_record_meter_iface = std::make_shared<PerfRecordObserver>(
+          pid, efimon::ObserverScope::PROCESS, delay, freq, true);
+      this->perf_record_meter_[pid] = perf_record_meter_iface;
+      this->perf_annotate_meter_[pid] =
+          std::make_shared<PerfAnnotateObserver>(*perf_record_meter_iface);
 #else
-    this->perf_record_meter_ = nullptr;
-    this->perf_annotate_meter_ = nullptr;
+      this->perf_record_meter_[pid] = nullptr;
+      this->perf_annotate_meter_[pid] = nullptr;
 #endif
-  } else if (ASM_WITH_PTRACE == perf) {
-    EFM_INFO("Process Monitor Start using PTrace-Capstone");
+    } else if (ASM_WITH_PTRACE == perf) {
+      EFM_INFO("Process Monitor Start using PTrace-Capstone");
 #ifdef ENABLE_PTRACE_CAPSTONE
-    this->ptrace_meter_ = std::make_shared<PTraceCapstoneObserver>(
-        this->pid_, efimon::ObserverScope::PROCESS, delay * 1000);
+      this->ptrace_meter_[pid] = std::make_shared<PTraceCapstoneObserver>(
+          pid, efimon::ObserverScope::PROCESS, delay * 1000);
 #else
-    this->ptrace_meter_ = nullptr;
+      this->ptrace_meter_[pid] = nullptr;
 #endif
+    }
   }
 
-  this->thread_ = std::make_unique<std::thread>(&EfimonWorker::ProcStatsWorker,
-                                                this, delay);
+  this->thread_ = std::make_unique<std::thread>(
+      &EfimonWorker::ProcStatsWorker, this, delay, this->tree_->GetTree());
 
   return Status{};
 }
@@ -124,12 +141,13 @@ Status EfimonWorker::Stop() {
   }
 
   // Destroy observers
-  this->proc_meter_.reset();
-  this->perf_record_meter_.reset();
-  this->perf_annotate_meter_.reset();
-  this->ptrace_meter_.reset();
-  this->cpu_usage_ = nullptr;
-  this->instructions_samples_ = nullptr;
+  this->proc_meter_.clear();
+  this->perf_record_meter_.clear();
+  this->perf_annotate_meter_.clear();
+  this->ptrace_meter_.clear();
+  this->tree_.reset();
+  this->cpu_usage_.clear();
+  this->instructions_samples_.clear();
 
   return Status{};
 }
@@ -139,45 +157,61 @@ Status EfimonWorker::State() {
   return Status{code, std::to_string(static_cast<uint>(code))};
 }
 
-void EfimonWorker::ProcStatsWorker(const uint delay) {
+void EfimonWorker::ProcStatsWorker(const uint delay,
+                                   const std::vector<int> &pids) {
   bool first_sample = true;
   bool enabled_perf = false;
   bool enabled_samples = false;
   this->running_.store(true);
 
   this->mutex_.lock();
-  this->cpu_usage_ =
-      GetReadingsIfEnabled<CPUReadings, true>(this->proc_meter_, 0);
   this->log_table_.clear();
+  for (const int pid : pids) {
+    this->cpu_usage_[pid] =
+        GetReadingsIfEnabled<CPUReadings, true>(this->proc_meter_[pid], 0);
 
-  enabled_perf =
-      this->perf_annotate_meter_ != nullptr || this->ptrace_meter_ != nullptr;
+    enabled_perf = this->perf_annotate_meter_[pid] != nullptr ||
+                   this->ptrace_meter_[pid] != nullptr;
 
-  if (this->perf_annotate_meter_ != nullptr) {
-    this->instructions_samples_ =
-        GetReadingsIfEnabled<InstructionReadings, true>(
-            this->perf_annotate_meter_, 0);
-  } else if (this->ptrace_meter_ != nullptr) {
-    this->instructions_samples_ =
-        GetReadingsIfEnabled<InstructionReadings, true>(this->ptrace_meter_, 0);
+    if (this->perf_annotate_meter_[pid] != nullptr) {
+      this->instructions_samples_[pid] =
+          GetReadingsIfEnabled<InstructionReadings, true>(
+              this->perf_annotate_meter_[pid], 0);
+    } else if (this->ptrace_meter_[pid] != nullptr) {
+      this->instructions_samples_[pid] =
+          GetReadingsIfEnabled<InstructionReadings, true>(
+              this->ptrace_meter_[pid], 0);
+    }
   }
   enabled_samples = this->samples_ != 0;
   this->mutex_.unlock();
 
   EFM_CHECK(this->CreateLogTable(), EFM_WARN);
-  EFM_INFO("Process with PID " + std::to_string(this->pid_) +
-           " will be recorded in: " + this->name_);
-  CSVLogger logger{this->name_, this->log_table_};
+  std::unordered_map<int, std::shared_ptr<CSVLogger>> loggers;
+
+  for (const int pid : pids) {
+    std::string name = this->name_ + "." + std::to_string(pid);
+    EFM_INFO("Process with PID " + std::to_string(pid) +
+             " will be recorded in: " + name);
+    loggers[pid] = std::make_shared<CSVLogger>(name, this->log_table_);
+  }
 
   while (running_.load()) {
-    EFM_CHECK(RefreshProcStat(), EFM_WARN_AND_BREAK);
+    for (const int pid : pids) {
+      EFM_CHECK(RefreshProcStat(pid), EFM_WARN_AND_BREAK);
 
-    // Log results
-    if (first_sample) {
-      first_sample = false;
-    } else {
-      EFM_CHECK(LogReadings(logger), EFM_WARN_AND_BREAK);
+      // Log results
+      if (!first_sample) {
+        std::shared_ptr<CSVLogger> logger = loggers[pid];
+        if (logger) {
+          EFM_CHECK(LogReadings(*logger, pid), EFM_WARN_AND_BREAK);
+        } else {
+          EFM_WARN("Cannot get the logger for the PID: " + std::to_string(pid));
+        }
+      }
     }
+
+    first_sample = false;
 
     // Wait for the next sample. Perf is a blocking call
     if (!enabled_perf) {
@@ -195,12 +229,12 @@ void EfimonWorker::ProcStatsWorker(const uint delay) {
   EFM_INFO("Monitoring of PID " + std::to_string(this->pid_) + " ended");
 }
 
-Status EfimonWorker::RefreshProcStat() {
+Status EfimonWorker::RefreshProcStat(const int pid) {
   std::scoped_lock slock(this->mutex_);
-  EFM_CHECK_STATUS(TriggerIfEnabled(this->proc_meter_));
-  EFM_CHECK_STATUS(TriggerIfEnabled(this->perf_record_meter_));
-  EFM_CHECK_STATUS(TriggerIfEnabled(this->perf_annotate_meter_));
-  EFM_CHECK_STATUS(TriggerIfEnabled(this->ptrace_meter_));
+  EFM_CHECK_STATUS(TriggerIfEnabled(this->proc_meter_[pid]));
+  EFM_CHECK_STATUS(TriggerIfEnabled(this->perf_record_meter_[pid]));
+  EFM_CHECK_STATUS(TriggerIfEnabled(this->perf_annotate_meter_[pid]));
+  EFM_CHECK_STATUS(TriggerIfEnabled(this->ptrace_meter_[pid]));
   return Status{};
 }
 
@@ -253,8 +287,9 @@ Status EfimonWorker::CreateLogTable() {
 #endif
 
 #if defined(ENABLE_PERF) || defined(ENABLE_PTRACE_CAPSTONE)
-  if ((this->perf_record_meter_ && this->perf_annotate_meter_) ||
-      this->ptrace_meter_) {
+  if ((this->perf_record_meter_.begin()->second &&
+       this->perf_annotate_meter_.begin()->second) ||
+      this->ptrace_meter_.begin()->second) {
     for (uint itype = 0;
          itype <= static_cast<uint>(assembly::InstructionType::UNCLASSIFIED);
          ++itype) {
@@ -292,19 +327,19 @@ Status EfimonWorker::CreateLogTable() {
 
   return Status{};
 }
-Status EfimonWorker::LogReadings(CSVLogger &logger) {  // NOLINT
+Status EfimonWorker::LogReadings(CSVLogger &logger, const int pid) {  // NOLINT
   std::scoped_lock slock(this->mutex_);
 
-  if (!this->cpu_usage_) {
+  if (!this->cpu_usage_[pid]) {
     return Status{Status::NOT_FOUND, "Cannot find the CPU Usage"};
   }
 
   CPUReadings sys_cpu_readings{};
   EFM_CHECK(this->analyser_->GetReadings(3, sys_cpu_readings), EFM_WARN);
 
-  auto timestamp = this->cpu_usage_->timestamp;
-  auto difference = this->cpu_usage_->difference;
-  auto proc_usage = this->cpu_usage_->overall_usage;
+  auto timestamp = this->cpu_usage_[pid]->timestamp;
+  auto difference = this->cpu_usage_[pid]->difference;
+  auto proc_usage = this->cpu_usage_[pid]->overall_usage;
   auto sys_usage = sys_cpu_readings.overall_usage;
 
   std::unordered_map<std::string, std::shared_ptr<Logger::IValue>> values = {};
@@ -352,8 +387,9 @@ Status EfimonWorker::LogReadings(CSVLogger &logger) {  // NOLINT
 #endif
 
 #if defined(ENABLE_PERF) || defined(ENABLE_PTRACE_CAPSTONE)
-  if ((this->perf_record_meter_ && this->perf_annotate_meter_) ||
-      this->ptrace_meter_) {
+  if ((this->perf_record_meter_.begin()->second &&
+       this->perf_annotate_meter_.begin()->second) ||
+      this->ptrace_meter_.begin()->second) {
     for (uint itype = 0;
          itype <= static_cast<uint>(assembly::InstructionType::UNCLASSIFIED);
          ++itype) {
@@ -364,7 +400,7 @@ Status EfimonWorker::LogReadings(CSVLogger &logger) {  // NOLINT
         std::string stype = AsmClassifier::TypeString(type);
         auto family = static_cast<assembly::InstructionFamily>(ftype);
         std::string sfamily = AsmClassifier::FamilyString(family);
-        auto tit = instructions_samples_->classification.find(type);
+        auto tit = instructions_samples_[pid]->classification.find(type);
 
         if (family == assembly::InstructionFamily::MEMORY ||
             family == assembly::InstructionFamily::ARITHMETIC ||
@@ -372,7 +408,7 @@ Status EfimonWorker::LogReadings(CSVLogger &logger) {  // NOLINT
           std::array<float, 4> probs;
           probs.fill(0.f);
 
-          if (instructions_samples_->classification.end() != tit) {
+          if (instructions_samples_[pid]->classification.end() != tit) {
             auto fit = tit->second.find(family);
             if (tit->second.end() != fit) {
               for (auto origit = fit->second.begin();
@@ -398,7 +434,7 @@ Status EfimonWorker::LogReadings(CSVLogger &logger) {  // NOLINT
           }
         } else {
           float probres = 0.f;
-          if (instructions_samples_->classification.end() != tit) {
+          if (instructions_samples_[pid]->classification.end() != tit) {
             auto fit = tit->second.find(family);
             if (tit->second.end() != fit) {
               for (auto origit = fit->second.begin();
