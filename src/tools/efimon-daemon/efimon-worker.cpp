@@ -16,7 +16,10 @@
 #include <efimon/proc/process-tree.hpp>
 #include <efimon/proc/stat.hpp>
 #include <efimon/ptrace-capstone/ptrace-capstone.hpp>
+#include <memory>
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "efimon-daemon/efimon-analyser.hpp"  // NOLINT
 #include "macro-handling.hpp"                 // NOLINT
@@ -24,44 +27,44 @@
 namespace efimon {
 
 EfimonWorker::EfimonWorker()
-    : name_{},
-      pid_{0},
-      samples_{0},
-      running_{false},
-      analyser_{nullptr},
-      thread_{nullptr},
-      tree_{nullptr},
-      proc_meter_{},
-      perf_record_meter_{},
-      perf_annotate_meter_{},
-      ptrace_meter_{} {}
+    : name_{},                 // NOLINT
+      pid_{0},                 // NOLINT
+      samples_{0},             // NOLINT
+      running_{false},         // NOLINT
+      analyser_{nullptr},      // NOLINT
+      thread_{nullptr},        // NOLINT
+      tree_{nullptr},          // NOLINT
+      proc_meter_{},           // NOLINT
+      perf_record_meter_{},    // NOLINT
+      perf_annotate_meter_{},  // NOLINT
+      ptrace_meter_{} {}       // NOLINT
 
 EfimonWorker::EfimonWorker(const std::string &name, const uint pid,
-                           EfimonAnalyser *analyser)
-    : name_{name},
-      pid_{pid},
-      samples_{0},
-      running_{false},
-      analyser_{analyser},
-      thread_{nullptr},
-      tree_{nullptr},
-      proc_meter_{},
-      perf_record_meter_{},
-      perf_annotate_meter_{},
-      ptrace_meter_{} {}
+                           EfimonAnalyser *analyser)  // NOLINT
+    : name_{name},                                    // NOLINT
+      pid_{pid},                                      // NOLINT
+      samples_{0},                                    // NOLINT
+      running_{false},                                // NOLINT
+      analyser_{analyser},                            // NOLINT
+      thread_{nullptr},                               // NOLINT
+      tree_{nullptr},                                 // NOLINT
+      proc_meter_{},                                  // NOLINT
+      perf_record_meter_{},                           // NOLINT
+      perf_annotate_meter_{},                         // NOLINT
+      ptrace_meter_{} {}                              // NOLINT
 
 EfimonWorker::EfimonWorker(EfimonWorker &&worker)
-    : name_{std::move(worker.name_)},
-      pid_{std::move(worker.pid_)},
-      samples_{std::move(worker.samples_)},
-      running_{false},
-      analyser_{std::move(worker.analyser_)},
-      thread_{nullptr},
-      tree_{nullptr},
-      proc_meter_{std::move(worker.proc_meter_)},
-      perf_record_meter_{std::move(worker.perf_record_meter_)},
-      perf_annotate_meter_{std::move(worker.perf_annotate_meter_)},
-      ptrace_meter_{std::move(worker.ptrace_meter_)} {
+    : name_{std::move(worker.name_)},                                // NOLINT
+      pid_{std::move(worker.pid_)},                                  // NOLINT
+      samples_{std::move(worker.samples_)},                          // NOLINT
+      running_{false},                                               // NOLINT
+      analyser_{std::move(worker.analyser_)},                        // NOLINT
+      thread_{nullptr},                                              // NOLINT
+      tree_{nullptr},                                                // NOLINT
+      proc_meter_{std::move(worker.proc_meter_)},                    // NOLINT
+      perf_record_meter_{std::move(worker.perf_record_meter_)},      // NOLINT
+      perf_annotate_meter_{std::move(worker.perf_annotate_meter_)},  // NOLINT
+      ptrace_meter_{std::move(worker.ptrace_meter_)} {               // NOLINT
   this->running_.store(worker.running_.load());
   this->thread_.swap(worker.thread_);
 }
@@ -69,8 +72,9 @@ EfimonWorker::EfimonWorker(EfimonWorker &&worker)
 EfimonWorker::~EfimonWorker() { this->Stop(); }
 
 Status EfimonWorker::Start(const uint delay, const uint samples,
-                           const uint perf, const uint freq,
-                           const uint delay_perf, const int children) {
+                           const uint perf, const uint freq,  // NOLINT
+                           const uint delay_perf,             // NOLINT
+                           const int children) {              // NOLINT
   if (0 == this->pid_) {
     EFM_ERROR_STATUS(
         "Invalid instance of the worker. Are you using default constructor?",
@@ -99,23 +103,29 @@ Status EfimonWorker::Start(const uint delay, const uint samples,
     this->proc_meter_[pid] = CreateIfEnabled<ProcStatObserver, true>(
         pid, efimon::ObserverScope::PROCESS, delay);
     if (ASM_WITH_PERF == perf) {
-      EFM_INFO("Process Monitor Start using Linux Perf");
 #ifdef ENABLE_PERF
+      EFM_INFO("Process Monitor Start using Linux Perf to PID " +
+               std::to_string(pid));
       auto perf_record_meter_iface = std::make_shared<PerfRecordObserver>(
-          pid, efimon::ObserverScope::PROCESS, delay, freq, true);
+          pid, efimon::ObserverScope::PROCESS, delay_perf, freq, true);
       this->perf_record_meter_[pid] = perf_record_meter_iface;
       this->perf_annotate_meter_[pid] =
           std::make_shared<PerfAnnotateObserver>(*perf_record_meter_iface);
 #else
+      EFM_INFO("Process Monitor did not start using Linux Perf to PID " +
+               std::to_string(pid));
       this->perf_record_meter_[pid] = nullptr;
       this->perf_annotate_meter_[pid] = nullptr;
 #endif
     } else if (ASM_WITH_PTRACE == perf) {
-      EFM_INFO("Process Monitor Start using PTrace-Capstone");
 #ifdef ENABLE_PTRACE_CAPSTONE
+      EFM_INFO("Process Monitor Start using PTrace-Capstone to PID " +
+               std::to_string(pid));
       this->ptrace_meter_[pid] = std::make_shared<PTraceCapstoneObserver>(
-          pid, efimon::ObserverScope::PROCESS, delay * 1000);
+          pid, efimon::ObserverScope::PROCESS, delay_perf);
 #else
+      EFM_INFO("Process Monitor did not start using PTrace-Capstone to PID " +
+               std::to_string(pid));
       this->ptrace_meter_[pid] = nullptr;
 #endif
     }
@@ -158,7 +168,7 @@ Status EfimonWorker::State() {
 }
 
 void EfimonWorker::ProcStatsWorker(const uint delay,
-                                   const std::vector<int> &pids) {
+                                   const std::vector<int> &pids) {  // NOLINT
   bool first_sample = true;
   bool enabled_perf = false;
   bool enabled_samples = false;
@@ -287,9 +297,8 @@ Status EfimonWorker::CreateLogTable() {
 #endif
 
 #if defined(ENABLE_PERF) || defined(ENABLE_PTRACE_CAPSTONE)
-  if ((this->perf_record_meter_.begin()->second &&
-       this->perf_annotate_meter_.begin()->second) ||
-      this->ptrace_meter_.begin()->second) {
+  if ((0 != this->perf_record_meter_.size()) ||
+      0 != this->ptrace_meter_.size()) {
     for (uint itype = 0;
          itype <= static_cast<uint>(assembly::InstructionType::UNCLASSIFIED);
          ++itype) {

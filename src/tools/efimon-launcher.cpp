@@ -8,6 +8,7 @@
 
 #include <json/json.h>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>              // NOLINT
 #include <condition_variable>  // NOLINT
@@ -17,11 +18,13 @@
 #include <efimon/proc/cpuinfo.hpp>
 #include <efimon/process-manager.hpp>
 #include <efimon/status.hpp>
+#include <iostream>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <sstream>
 #include <string>
 #include <thread>  // NOLINT
+#include <vector>
 #include <zmq.hpp>
 
 #include "efimon-daemon/efimon-worker.hpp"  // NOLINT
@@ -96,8 +99,8 @@ std::string get_help(char **argv) {
       "\n\t\t   2: ASM with Ptrace Capstone"
       "\n\t\t";
   msg +=
-      " -dperf,--delay-perf DELAY_SECS (default: 1 Sec). Perf analysis time"
-      " window.\n\t\t";
+      " -dperf,--delay-perf DELAY_MSECS (default: 1 ms). Perf analysis time"
+      " window (in perf, it's seconds).\n\t\t";
   msg +=
       " -o,--output PATH (default: provided by daemon). Output file of the "
       "logs\n\t\t";
