@@ -9,6 +9,8 @@
 #include "efimon-daemon/efimon-analyser.hpp"  // NOLINT
 
 #include <efimon/proc/cpuinfo.hpp>
+#include <memory>
+#include <vector>
 
 #include "efimon-daemon/efimon-worker.hpp"  // NOLINT
 #include "macro-handling.hpp"               // NOLINT
@@ -74,11 +76,12 @@ Status EfimonAnalyser::StartSystemThread(const uint delay) {
   return Status{};
 }
 
-Status EfimonAnalyser::StartWorkerThread(const std::string &name,
-                                         const uint pid, const uint delay,
-                                         const uint samples, const uint perf,
-                                         const uint freq, const uint delay_perf,
-                                         const int children) {
+Status EfimonAnalyser::StartWorkerThread(
+    const std::string &name, const uint pid, const uint delay,  // NOLINT
+    const uint samples, const uint perf,                        // NOLINT
+    const uint freq, const uint delay_perf,                     // NOLINT
+    const int children,                                         // NOLINT
+    const int cthreads) {                                       // NOLINT
   if (this->proc_workers_.end() != this->proc_workers_.find(pid)) {
     return Status{Status::RESOURCE_BUSY,
                   "The monitor has already started for the given PID: " +
@@ -97,7 +100,7 @@ Status EfimonAnalyser::StartWorkerThread(const std::string &name,
 
   EFM_INFO("Starting Process Monitor for PID: " + std::to_string(pid));
   return this->proc_workers_[pid]->Start(delay, samples, perf, freq, delay_perf,
-                                         children);
+                                         children, cthreads);
 }
 
 Status EfimonAnalyser::CheckWorkerThread(const uint pid) {

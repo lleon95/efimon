@@ -46,6 +46,7 @@ struct AppData {
   uint perf = static_cast<uint>(EfimonWorker::NO_ASM);
   uint delay_perf = kDelayPerf;
   int children = 0;
+  int cthreads = 0;
   std::string filename = "";
 
   // Manages the process manager
@@ -92,6 +93,12 @@ std::string get_help(char **argv) {
       " -children,--children NUM. Number of children to analyse. This option "
       "allows to analyse children and how many. To analyse all, use -1. "
       "To analyse only the parent, use 0.\n\t\t";
+  msg +=
+      " -cthreads,--check-threads NUM. Number of threads to analyse per "
+      "process (including children processes). This option to analyse "
+      "threads spawned from a process. To analyse all, use -1. "
+      "To analyse only the main thread, use 0. To analyse only a children "
+      "process, invoke the launcher from a child PID\n\t\t";
   msg +=
       " -perf,--select-perf Enable the asm analyser to get the profiles."
       "\n\t\t   0: No ASM"
@@ -172,6 +179,7 @@ Json::Value create_template(const AppData &data) {
   root["delay"] = data.delay;
 
   root["children"] = data.children;
+  root["cthreads"] = data.cthreads;
 
   return root;
 }
@@ -354,6 +362,8 @@ int main(int argc, char **argv) {
   bool check_command = argparser.Exists("-c") || argparser.Exists("--command");
   bool check_children =
       argparser.Exists("-children") || argparser.Exists("--children");
+  bool check_cthreads =
+      argparser.Exists("-cthreads") || argparser.Exists("--check-threads");
   bool check_pid = argparser.Exists("-pid") || argparser.Exists("--pid");
   bool check_perf =
       argparser.Exists("-perf") || argparser.Exists("--select-perf");
@@ -421,6 +431,12 @@ int main(int argc, char **argv) {
                                      : argparser.GetOption("--children"));
   }
 
+  if (check_cthreads) {
+    appdata.cthreads = std::stoi(argparser.Exists("-cthreads")
+                                     ? argparser.GetOption("-cthreads")
+                                     : argparser.GetOption("--check-threads"));
+  }
+
   if (check_output) {
     appdata.filename = argparser.Exists("-o") ? argparser.GetOption("-")
                                               : argparser.GetOption("--output");
@@ -441,6 +457,8 @@ int main(int argc, char **argv) {
   EFM_INFO(std::string("Perf Selector: ") + std::to_string(appdata.perf));
   EFM_INFO(std::string("Children under Analysis: ") +
            std::to_string(appdata.children));
+  EFM_INFO(std::string("Threads to analyse: ") +
+           std::to_string(appdata.cthreads) + " excluding the main thread");
 
   // Launch the Process
   appdata.terminated.store(false);

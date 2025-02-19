@@ -78,7 +78,8 @@ EfimonWorker::~EfimonWorker() { this->Stop(); }
 Status EfimonWorker::Start(const uint delay, const uint samples,
                            const uint perf, const uint freq,  // NOLINT
                            const uint delay_perf,             // NOLINT
-                           const int children) {              // NOLINT
+                           const int children,                // NOLINT
+                           const int cthreads) {              // NOLINT
   if (0 == this->pid_) {
     EFM_ERROR_STATUS(
         "Invalid instance of the worker. Are you using default constructor?",
@@ -102,20 +103,31 @@ Status EfimonWorker::Start(const uint delay, const uint samples,
   this->samples_ = samples;
 
   // Create observers for each PID
-  // TODO(lleon): Add the tasks option
   EFM_INFO("Starting the monitoring of children processes of parent PID: " +
            std::to_string(this->pid_));
   for (const int pid : children_pids) {
     this->cpids_.push_back(pid);
+
     // Get the threads
     this->pid_threads_[pid] = std::vector<int>{};
     EFM_INFO("Threads IDs from PID " + std::to_string(pid));
     ThreadTree thread_tree{pid};
+
     auto tree_vector = thread_tree.GetTree();
+    int total_threads = tree_vector.size();
+    int analysis_threads = cthreads == -1 ? total_threads : cthreads;
+    analysis_threads = analysis_threads == 0 ? 1 : analysis_threads;
+    analysis_threads =
+        analysis_threads > total_threads ? total_threads : analysis_threads;
+
     for (int tid : tree_vector) {
       EFM_INFO("\t" + std::to_string(tid));
       this->pid_threads_[pid].push_back(tid);
     }
+
+    EFM_INFO("Analysing only " + std::to_string(analysis_threads) + "/" +
+             std::to_string(total_threads));
+    // TODO(lleon): Add the tasks option
     // Create meters for children PID
     this->proc_meter_[pid] = CreateIfEnabled<ProcStatObserver, true>(
         pid, efimon::ObserverScope::PROCESS, delay);
