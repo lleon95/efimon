@@ -97,6 +97,16 @@ executable('process-tree',
           install : false,
 )
 
+executable('thread-tree',
+          [
+            files('thread-tree.cpp')
+          ],
+          cpp_args : cpp_args,
+          include_directories : [project_inc],
+          dependencies: [libefimon_dep],
+          install : false,
+)
+
 executable('process-manager-threaded',
           [
             files('process-manager-threaded.cpp')

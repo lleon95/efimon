@@ -15,6 +15,7 @@
 #include <efimon/perf/record.hpp>
 #include <efimon/proc/process-tree.hpp>
 #include <efimon/proc/stat.hpp>
+#include <efimon/proc/thread-tree.hpp>
 #include <efimon/ptrace-capstone/ptrace-capstone.hpp>
 #include <memory>
 #include <string>
@@ -101,6 +102,7 @@ Status EfimonWorker::Start(const uint delay, const uint samples,
   this->samples_ = samples;
 
   // Create observers
+  // TODO(lleon): Add the tasks option
   for (const int pid : children_pids) {
     this->cpids_.push_back(pid);
     this->proc_meter_[pid] = CreateIfEnabled<ProcStatObserver, true>(
