@@ -101,10 +101,22 @@ Status EfimonWorker::Start(const uint delay, const uint samples,
            " with time window: " + std::to_string(delay_perf) + " secs");
   this->samples_ = samples;
 
-  // Create observers
+  // Create observers for each PID
   // TODO(lleon): Add the tasks option
+  EFM_INFO("Starting the monitoring of children processes of parent PID: " +
+           std::to_string(this->pid_));
   for (const int pid : children_pids) {
     this->cpids_.push_back(pid);
+    // Get the threads
+    this->pid_threads_[pid] = std::vector<int>{};
+    EFM_INFO("Threads IDs from PID " + std::to_string(pid));
+    ThreadTree thread_tree{pid};
+    auto tree_vector = thread_tree.GetTree();
+    for (int tid : tree_vector) {
+      EFM_INFO("\t" + std::to_string(tid));
+      this->pid_threads_[pid].push_back(tid);
+    }
+    // Create meters for children PID
     this->proc_meter_[pid] = CreateIfEnabled<ProcStatObserver, true>(
         pid, efimon::ObserverScope::PROCESS, delay);
     if (ASM_WITH_PERF == perf) {

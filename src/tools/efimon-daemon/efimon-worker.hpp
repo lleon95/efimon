@@ -149,6 +149,8 @@ class EfimonWorker {
   std::unique_ptr<ProcessTree> tree_;
   /** Process IDs to analyse */
   std::vector<int> cpids_;
+  /** Threads IDs to analyse. The key is a PPID */
+  std::unordered_map<int, std::vector<int>> pid_threads_;
 
   // Meter Instances
   /** Observer for procstat */
