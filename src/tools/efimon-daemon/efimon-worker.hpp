@@ -147,6 +147,8 @@ class EfimonWorker {
   std::unique_ptr<std::thread> thread_;
   /** Process tree instance */
   std::unique_ptr<ProcessTree> tree_;
+  /** Process IDs to analyse */
+  std::vector<int> cpids_;
 
   // Meter Instances
   /** Observer for procstat */

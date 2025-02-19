@@ -34,6 +34,7 @@ EfimonWorker::EfimonWorker()
       analyser_{nullptr},      // NOLINT
       thread_{nullptr},        // NOLINT
       tree_{nullptr},          // NOLINT
+      cpids_{},                // NOLINT
       proc_meter_{},           // NOLINT
       perf_record_meter_{},    // NOLINT
       perf_annotate_meter_{},  // NOLINT
@@ -48,6 +49,7 @@ EfimonWorker::EfimonWorker(const std::string &name, const uint pid,
       analyser_{analyser},                            // NOLINT
       thread_{nullptr},                               // NOLINT
       tree_{nullptr},                                 // NOLINT
+      cpids_{},                                       // NOLINT
       proc_meter_{},                                  // NOLINT
       perf_record_meter_{},                           // NOLINT
       perf_annotate_meter_{},                         // NOLINT
@@ -61,6 +63,7 @@ EfimonWorker::EfimonWorker(EfimonWorker &&worker)
       analyser_{std::move(worker.analyser_)},                        // NOLINT
       thread_{nullptr},                                              // NOLINT
       tree_{nullptr},                                                // NOLINT
+      cpids_{},                                                      // NOLINT
       proc_meter_{std::move(worker.proc_meter_)},                    // NOLINT
       perf_record_meter_{std::move(worker.perf_record_meter_)},      // NOLINT
       perf_annotate_meter_{std::move(worker.perf_annotate_meter_)},  // NOLINT
@@ -95,11 +98,11 @@ Status EfimonWorker::Start(const uint delay, const uint samples,
            std::to_string(analysis_children) + "/" +
            std::to_string(total_children) +
            " with time window: " + std::to_string(delay_perf) + " secs");
-  // TODO(lleon): Add children implementation
   this->samples_ = samples;
 
   // Create observers
   for (const int pid : children_pids) {
+    this->cpids_.push_back(pid);
     this->proc_meter_[pid] = CreateIfEnabled<ProcStatObserver, true>(
         pid, efimon::ObserverScope::PROCESS, delay);
     if (ASM_WITH_PERF == perf) {
@@ -129,10 +132,13 @@ Status EfimonWorker::Start(const uint delay, const uint samples,
       this->ptrace_meter_[pid] = nullptr;
 #endif
     }
+    if (--analysis_children < 0) {
+      break;
+    }
   }
 
-  this->thread_ = std::make_unique<std::thread>(
-      &EfimonWorker::ProcStatsWorker, this, delay, this->tree_->GetTree());
+  this->thread_ = std::make_unique<std::thread>(&EfimonWorker::ProcStatsWorker,
+                                                this, delay, this->cpids_);
 
   return Status{};
 }
