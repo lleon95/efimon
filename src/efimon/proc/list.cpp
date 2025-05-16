@@ -23,9 +23,8 @@ Status ProcPsProcessLister::Detect() {
   struct pids_info *info = nullptr;
   struct pids_fetch *fetch = nullptr;
   enum pids_item items[] = {PIDS_ID_PID, PIDS_CMD, PIDS_ID_EUSER};
-  // constexpr int numitems = 3 ;
 
-  // Optional: hide kernel threads
+  /* Optional: hide kernel threads */
   setenv("LIBPROC_HIDE_KERNEL", "1", 1);
   procps_pids_new(&info, items, std::size(items));
   fetch = procps_pids_reap(info, PIDS_FETCH_TASKS_ONLY);
