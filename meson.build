@@ -27,7 +27,7 @@ project_deps = []
 c_args = ['-Werror']
 cpp_args = ['-Werror']
 
-# Find libproc2 library in place of libprcps
+# Find libproc2 library
 cpp = meson.get_compiler('cpp')
 libproc2_dep = cpp.find_library('libproc2', required: true)
 enable_libproc2 = false
