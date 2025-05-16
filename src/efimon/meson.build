@@ -21,7 +21,7 @@ lib_efimon_sources += [
   files('logger/csv.cpp'),
 ]
 
-if enable_libprocps
+if enable_libproc2
   lib_efimon_sources += [
     files('proc/list.cpp'),
   ]

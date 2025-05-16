@@ -6,30 +6,38 @@
  * @copyright Copyright (c) 2024. See License for Licensing
  */
 
-#include <efimon/proc/list.hpp>
-#include <efimon/status.hpp>
+#include <libproc2/pids.h>
 
 #include <algorithm>
+#include <cstddef>
+#include <cstdlib>
 #include <cstring>
-
-#include <proc/readproc.h>
-#include <pwd.h>
+#include <efimon/proc/list.hpp>
+#include <efimon/status.hpp>
+#include <utility>
+#include <vector>
 
 namespace efimon {
-
 Status ProcPsProcessLister::Detect() {
   /* Capture the last processes */
-  PROCTAB* proc = openproc(PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS);
-  proc_t proc_info;
+  struct pids_info *info = nullptr;
+  struct pids_fetch *fetch = nullptr;
+  enum pids_item items[] = {PIDS_ID_PID, PIDS_CMD, PIDS_ID_EUSER};
+  // constexpr int numitems = 3 ;
+
+  // Optional: hide kernel threads
+  setenv("LIBPROC_HIDE_KERNEL", "1", 1);
+  procps_pids_new(&info, items, std::size(items));
+  fetch = procps_pids_reap(info, PIDS_FETCH_TASKS_ONLY);
+
   std::vector<ProcessLister::Process> detected;
 
-  memset(&proc_info, 0, sizeof(proc_info));
-  while (readproc(proc, &proc_info) != NULL) {
-    struct passwd* pws = getpwuid(proc_info.euid);  // NOLINT
+  for (int i = 0; i < fetch->counts->total; i++) {
     ProcessLister::Process elem;
-    elem.pid = proc_info.tid;
-    elem.cmd = proc_info.cmd;
-    elem.owner = pws->pw_name;
+    struct pids_stack *stack = fetch->stacks[i];
+    elem.pid = PIDS_VAL(0, u_int, stack, info);
+    elem.cmd = PIDS_VAL(1, str, stack, info);
+    elem.owner = PIDS_VAL(2, str, stack, info);
     detected.emplace_back(elem);
   }
 
@@ -37,7 +45,7 @@ Status ProcPsProcessLister::Detect() {
   this->new_.clear();
   this->dead_.clear();
 
-  for (auto& proc : detected) {
+  for (auto &proc : detected) {
     auto find_crit = [&](ProcessLister::Process p1) {
       return p1.pid == proc.pid;
     };
@@ -45,7 +53,7 @@ Status ProcPsProcessLister::Detect() {
     if (it == this->last_.end()) this->new_.emplace_back(proc);
   }
 
-  for (auto& proc : this->last_) {
+  for (auto &proc : this->last_) {
     auto find_crit = [&](ProcessLister::Process p1) {
       return p1.pid == proc.pid;
     };
@@ -56,7 +64,7 @@ Status ProcPsProcessLister::Detect() {
   this->last_.clear();
   this->last_ = std::move(detected);
 
-  closeproc(proc);
+  procps_pids_unref(&info);
   return Status{};
 }
 
