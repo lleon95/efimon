@@ -5,7 +5,7 @@
 # Author: Luis G. Leon Vega <luis.leon@ieee.org>
 #
 
-if enable_libprocps
+if enable_libproc2
   executable('process-tracking',
             [
               files('process-tracking.cpp')

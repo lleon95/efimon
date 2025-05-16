@@ -27,16 +27,16 @@ project_deps = []
 c_args = ['-Werror']
 cpp_args = ['-Werror']
 
-# Find proc library
+# Find libproc2 library in place of libprcps
 cpp = meson.get_compiler('cpp')
-libprocps1_dep = cpp.find_library('libprocps', required: false)
-enable_libprocps = false
-if libprocps1_dep.found()
-  message('libprocps1 found. Proceeding')
-  project_deps += libprocps1_dep
-  enable_libprocps = true
+libproc2_dep = cpp.find_library('libproc2', required: true)
+enable_libproc2 = false
+if libproc2_dep.found()
+  message('libproc2 found. Proceeding')
+  project_deps += libproc2_dep
+  enable_libproc2 = true
 else
-  warning('libprocps not found. Listers will not be available')
+  warning('libproc2 not found. Listers will not be available')
 endif
 
 # Find SQLite3
