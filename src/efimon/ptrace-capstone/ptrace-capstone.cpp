@@ -14,6 +14,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <cstdio>
 #include <efimon/observer-enums.hpp>
 #include <efimon/observer.hpp>
 #include <efimon/ptrace-capstone/ptrace-capstone.hpp>
@@ -38,8 +39,9 @@ extern uint64_t GetUptime();
 
 PTraceCapstoneObserver::PTraceCapstoneObserver(const uint pid,
                                                const ObserverScope scope,
-                                               const uint64_t interval)
-    : Observer{}, readings_{}, valid_{false} {
+                                               const uint64_t interval,
+                                               const uint64_t frequency)
+    : Observer{}, readings_{}, frequency_{frequency}, valid_{false} {
   this->pid_ = pid;
   this->interval_ = interval;
   this->worker_running_.store(false);
@@ -255,6 +257,7 @@ Status PTraceCapstoneObserver::Trigger() {
 }
 
 void PTraceCapstoneObserver::Worker() {
+  uint64_t delay_sample_us = static_cast<uint64_t>(1e6 / this->frequency_);
   while (this->worker_running_.load()) {
     std::scoped_lock lock(this->worker_mutex_);
 
@@ -262,6 +265,8 @@ void PTraceCapstoneObserver::Worker() {
     this->GetSample();
     this->DecodeSample();
     this->ParseResults();
+
+    std::this_thread::sleep_for(std::chrono::microseconds(delay_sample_us));
   }
 }
 

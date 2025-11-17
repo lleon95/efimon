@@ -151,7 +151,7 @@ Status EfimonWorker::Start(const uint delay, const uint samples,
       EFM_INFO("Process Monitor Start using PTrace-Capstone to PID " +
                std::to_string(pid));
       this->ptrace_meter_[pid] = std::make_shared<PTraceCapstoneObserver>(
-          pid, efimon::ObserverScope::PROCESS, delay_perf);
+          pid, efimon::ObserverScope::PROCESS, delay_perf * 1000, freq);
 #else
       EFM_INFO("Process Monitor did not start using PTrace-Capstone to PID " +
                std::to_string(pid));
