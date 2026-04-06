@@ -49,6 +49,8 @@ yum install libsqlite3x.x86_64 libsqlite3x-devel.x86_64
 yum install cppzmq-devel.x86_64
 # JsonCPP
 yum install jsoncpp-devel.x86_64
+# Capstone
+yum install capstone capstone-devel
 ```
 
 On Ubuntu 20.04:
@@ -64,6 +66,8 @@ apt install libsqlite3-dev libsqlite3-0
 apt install libzmqpp4 libzmqpp-dev
 # JsonCPP
 apt install libjsoncpp-dev
+# Capstone
+apt install libcapstone-dev
 ```
 
 On Ubuntu 24.04:
@@ -201,7 +205,42 @@ It has options to:
 EfiMon has been tested in the following platforms:
 
 * Ubuntu 20.04 with Intel Core i5 6000
-* Fedora 16 with AMD Epyc Zen2
+* Fedora 40 with AMD Epyc Zen2
+
+## Service Installation
+
+You can launch the daemon to run as root from the system start:
+
+```bash
+cp misc/efimon.service /etc/systemd/system/efimon.service
+sudo systemctl enable efimon
+sudo systemctl start efimon
+```
+
+## Packaging as RPM file
+
+Prepare the environment:
+
+```bash
+mkdir ~/rpmbuild/SOURCES
+tar czf efimon-0.2.0.tar.gz .
+cp efimon-0.2.0.tar.gz ~/rpmbuild/SOURCES/efimon-0.2.0.tar.gz
+```
+
+Then, compile:
+
+```bash
+cd misc
+rpmbuild -bb efimon.spec
+```
+
+The RPM file will be available in `~/rpmbuild/RPMS`
+
+Install:
+
+```bash
+sudo dnf localinstall efimon-0*.rpm
+```
 
 ## Additional Information
 
@@ -209,7 +248,8 @@ This project is given to you under the LGPL v2.1 Licence. Dynamic linkage from c
 
 ### Contributors
 
-* Luis G. Leon Vega <luis.leon@ieee.org>
+* Luis G. Leon Vega <l.leon@tec.ac.cr>
+* Niccolo Tosato <niccolo.tosato@areasciencepark.it>
 
 ### Official Repository
 
