@@ -66,6 +66,21 @@ apt install libzmqpp4 libzmqpp-dev
 apt install libjsoncpp-dev
 ```
 
+On Ubuntu 24.04:
+
+```bash
+# ProcPS
+apt install libcapstone-dev 
+# Linux Perf
+apt install linux-tools-common linux-tools-generic
+# SQLite
+apt install libsqlite3-dev libsqlite3-0
+# ZeroMQ
+apt install cppzmq-dev
+# JsonCPP
+apt install libjsoncpp-dev
+```
+
 **Optional**
 
 For the documentation, you will require other dependencies like graphviz, java, texlive and doxygen. Please, install them by using:

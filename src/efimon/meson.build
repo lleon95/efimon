@@ -12,6 +12,7 @@ lib_efimon_sources += [
   files('proc/net.cpp'),
   files('proc/stat.cpp'),
   files('proc/thread-tree.cpp'),
+  files('proc/process-tree.cpp'),
   files('uptime.cpp'),
   files('asm-classifier.cpp'),
   files('asm-classifier/x86-classifier.cpp'),

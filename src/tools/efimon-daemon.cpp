@@ -11,7 +11,9 @@
 #include <efimon/arg-parser.hpp>
 #include <efimon/logger/macros.hpp>
 #include <efimon/proc/cpuinfo.hpp>
+#include <iostream>
 #include <sstream>
+#include <string>
 #include <zmq.hpp>
 
 #include "efimon-daemon/efimon-analyser.hpp"  // NOLINT
@@ -38,8 +40,11 @@ int main(int argc, char **argv) {
   uint frequency = kDefFrequency;
   uint samples = kDefaultSampleLimit;
   uint delaytime = kDelay;
+  uint delayperftime = kDelayPerf;
   std::string outputpath = kDefaultOutputPath;
   uint port = kPort;
+  int globalchildren = 0;
+  int globalcthreads = 0;
 
   // ------------ Arguments ------------
   ArgParser argparser(argc, argv);
@@ -48,10 +53,16 @@ int main(int argc, char **argv) {
       argparser.Exists("-f") || argparser.Exists("--frequency");
   bool check_samples = argparser.Exists("-s") || argparser.Exists("--samples");
   bool check_delay = argparser.Exists("-d") || argparser.Exists("--delay");
+  bool check_delay_perf =
+      argparser.Exists("-dperf") || argparser.Exists("--delay-perf");
   bool check_output =
       argparser.Exists("-o") || argparser.Exists("--output-folder");
   bool check_help = argparser.Exists("-h") || argparser.Exists("--help");
   bool check_port = argparser.Exists("-p") || argparser.Exists("--port");
+  bool check_children =
+      argparser.Exists("-children") || argparser.Exists("--children");
+  bool check_cthreads =
+      argparser.Exists("-cthreads") || argparser.Exists("--check-threads");
   bool debug_mode =
       argparser.Exists("-g") || argparser.Exists("--enable-debug");
 
@@ -70,9 +81,22 @@ int main(int argc, char **argv) {
     msg +=
         " -f,--frequency FREQUENCY_HZ (default: 100 Hz). Sampling "
         "frequency\n\t\t";
+    msg +=
+        " -children,--children NUM. Number of children to analyse. This option "
+        "allows to analyse children and how many. To analyse all, use -1. "
+        "To analyse only the parent, use 0.\n\t\t";
+    msg +=
+        " -cthreads,--check-threads NUM. Number of threads to analyse per "
+        "process (including children processes). This option to analyse "
+        "threads spawned from a process. To analyse all, use -1. "
+        "To analyse only the main thread, use 0. To analyse only a children "
+        "process, invoke the launcher from a child PID\n\t\t";
     msg += " -g,--enable-debug (default: disabled) Enable debug messages\n\t\t";
     msg +=
         " -d,--delay DELAY_SECS (default: 3 Secs). Sampling time window\n\t\t";
+    msg +=
+        " -dperf,--delay-perf DELAY_SECS (default: 1 Sec). Perf analysis time"
+        " window.\n\t\t";
     msg +=
         " -p,--port PORT (default: 5550 Secs). EfiMon Socket Port for "
         "IPC\n\t\t";
@@ -102,9 +126,27 @@ int main(int argc, char **argv) {
                                          : argparser.GetOption("--delay"));
   }
 
+  if (check_delay_perf) {
+    delayperftime = std::stoi(argparser.Exists("-dperf")
+                                  ? argparser.GetOption("-dperf")
+                                  : argparser.GetOption("--delay-perf"));
+  }
+
   if (check_port) {
     port = std::stoi(argparser.Exists("-p") ? argparser.GetOption("-p")
                                             : argparser.GetOption("--port"));
+  }
+
+  if (check_children) {
+    globalchildren = std::stoi(argparser.Exists("-children")
+                                   ? argparser.GetOption("-children")
+                                   : argparser.GetOption("--children"));
+  }
+
+  if (check_cthreads) {
+    globalcthreads = std::stoi(argparser.Exists("-cthreads")
+                                   ? argparser.GetOption("-cthreads")
+                                   : argparser.GetOption("--check-threads"));
   }
 
   if (check_output) {
@@ -116,8 +158,14 @@ int main(int argc, char **argv) {
   EFM_INFO(std::string("Frequency [Hz]: ") + std::to_string(frequency));
   EFM_INFO(std::string("Samples: ") + std::to_string(samples));
   EFM_INFO(std::string("Delay time [secs]: ") + std::to_string(delaytime));
+  EFM_INFO(std::string("Delay perf time [secs]: ") +
+           std::to_string(delayperftime));
   EFM_INFO(std::string("Output folder: ") + outputpath);
   EFM_INFO(std::string("IPC TCP Port: ") + std::to_string(port));
+  EFM_INFO(std::string("Children to analyse: ") +
+           std::to_string(globalchildren));
+  EFM_INFO(std::string("Threads to analyse: ") +
+           std::to_string(globalcthreads) + " excluding the main thread");
   EFM_INFO(std::string("Debug Mode: ") + std::to_string(debug_mode));
 
   // ---------- Initialise ZeroMQ ------------
@@ -188,6 +236,13 @@ int main(int argc, char **argv) {
         uint perf = root.isMember("perf")
                         ? root["perf"].asUInt()
                         : static_cast<uint>(EfimonWorker::NO_ASM);
+        uint delay_perf = root.isMember("delay-perf")
+                              ? root["delay-perf"].asUInt()
+                              : delayperftime;
+        int children = root.isMember("children") ? root["children"].asInt()
+                                                 : globalchildren;
+        int cthreads = root.isMember("cthreads") ? root["cthreads"].asInt()
+                                                 : globalcthreads;
         uint freq = root.isMember("frequency") ? root["frequency"].asUInt()
                                                : kDefFrequency;
         uint samples = root.isMember("samples") ? root["samples"].asUInt() : 0;
@@ -197,8 +252,9 @@ int main(int argc, char **argv) {
                  " to: " + std::to_string(state) +
                  " with delay: " + std::to_string(delay) + " secs");
         if (state) {
-          status =
-              analyser.StartWorkerThread(name, pid, delay, samples, perf, freq);
+          status = analyser.StartWorkerThread(name, pid, delay, samples, perf,
+                                              freq, delay_perf,     // NOLINT
+                                              children, cthreads);  // NOLINT
         } else {
           status = analyser.StopWorkerThread(pid);
         }

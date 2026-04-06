@@ -18,7 +18,7 @@
 #include <efimon/readings.hpp>
 #include <efimon/readings/instruction-readings.hpp>
 #include <efimon/status.hpp>
-#include <filesystem>
+#include <filesystem>  // NOLINT
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
@@ -43,7 +43,8 @@ class PTraceCapstoneObserver : public Observer {
    */
   PTraceCapstoneObserver(const uint pid = 0,
                          const ObserverScope = ObserverScope::PROCESS,
-                         const uint64_t interval = 0);
+                         const uint64_t interval = 0,
+                         const uint64_t frequency = 1000);
 
   /**
    * @brief Manually triggers the update in case that there is no interval
@@ -156,6 +157,8 @@ class PTraceCapstoneObserver : public Observer {
  private:
   /** Instruction readings: where the results are going to be encapsulated */
   InstructionReadings readings_;
+
+  uint64_t frequency_;
   /** If true, the instance has valid measurements */
   bool valid_;
   /** Classifier to construct the proper histograms */
