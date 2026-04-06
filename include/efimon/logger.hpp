@@ -81,7 +81,7 @@ class Logger {
            const std::vector<MapTuple> &fields);
   */
 
-  virtual Status InsertColumn(
+  virtual Status InsertRow(
       const std::unordered_map<std::string, std::shared_ptr<IValue>> &vals) = 0;
 
   virtual ~Logger() = default;

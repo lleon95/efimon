@@ -14,6 +14,7 @@
 #include <efimon/asm-classifier.hpp>
 #include <efimon/readings.hpp>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 
 namespace efimon {
@@ -23,9 +24,10 @@ namespace efimon {
  */
 struct InstructionReadings : public Readings {
   /** Contains the histogram of the classification according to instruction
-      type and family */
+      type, family, data origin and probability */
   std::unordered_map<assembly::InstructionType,
-                     std::unordered_map<assembly::InstructionFamily, float>>
+                     std::unordered_map<assembly::InstructionFamily,
+                                        std::unordered_map<uint8_t, float>>>
       classification;
   /** Contains the same information as above but containerised by
       instruction */

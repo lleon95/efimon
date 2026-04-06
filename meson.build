@@ -5,7 +5,7 @@
 # Author: Luis G. Leon Vega <luis.leon@ieee.org>
 #
 
-project('efimon', ['c','cpp'], version : '0.1.0',
+project('efimon', ['c','cpp'], version : '0.2.0',
         default_options : ['warning_level=3',
                            'cpp_std=c++17',
                            'c_std=c17',
@@ -29,8 +29,15 @@ cpp_args = ['-Werror']
 
 # Find proc library
 cpp = meson.get_compiler('cpp')
-libprocps_dep = cpp.find_library('libprocps', required: true)
-project_deps += libprocps_dep
+libprocps1_dep = cpp.find_library('libprocps', required: false)
+enable_libprocps = false
+if libprocps1_dep.found()
+  message('libprocps1 found. Proceeding')
+  project_deps += libprocps1_dep
+  enable_libprocps = true
+else
+  warning('libprocps not found. Listers will not be available')
+endif
 
 # Find SQLite3
 enable_sql = false
@@ -59,6 +66,7 @@ endif
 
 # Verify if IPMI OEM is installed
 enable_ipmi = false
+enable_ipmi_sensors = false
 ipmi_oem_executable = find_program('ipmi-oem', required: false, native: true)
 if ipmi_oem_executable.found() and get_option('enable-ipmi')
   enable_ipmi = true
@@ -66,6 +74,14 @@ if ipmi_oem_executable.found() and get_option('enable-ipmi')
   message('IPMI found')
 else
   message('IPMI not found. Disabling code related to IPMI')
+endif
+ipmi_sensors_executable = find_program('ipmi-sensors', required: false, native: true)
+if ipmi_sensors_executable.found() and get_option('enable-ipmi')
+  enable_ipmi_sensors = true
+  cpp_args += ['-DENABLE_IPMI_SENSORS']
+  message('IPMI Sensors found')
+else
+  message('IPMI not found. Disabling code related to IPMI Sensors')
 endif
 
 # Add Intel PCM
@@ -94,6 +110,48 @@ if fs.is_dir('/sys/class/powercap/intel-rapl') and get_option('enable-rapl')
 else
   warning('RAPL not found. Disabling code related to Intel RAPL')
 endif
+
+# Verify if ZeroMQ is installed
+enable_zeromq = false
+zeromq_dep = dependency('libzmq', required: false)
+if zeromq_dep.found()
+  message('ZeroMQ Found. Enabling')
+  enable_zeromq = true
+  project_deps += [zeromq_dep]
+  c_args += ['-DENABLE_ZEROMQ']
+  cpp_args += ['-DENABLE_ZEROMQ']
+else
+  warning('ZeroMQ not found. It will disabled the efimon-daemon and some examples')
+endif
+
+# Verify if JsonCPP is installed
+enable_jsoncpp = false
+jsoncpp_dep = dependency('jsoncpp', required: false)
+if jsoncpp_dep.found()
+  message('JSONCPP Found. Enabling')
+  enable_jsoncpp = true
+  project_deps += [jsoncpp_dep]
+  c_args += ['-DENABLE_JSONCPP']
+  cpp_args += ['-DENABLE_JSONCPP']
+else
+  warning('JSONCPP not found. It will disabled the efimon-daemon and some examples')
+endif
+
+# Verify Capstone and Ptrace
+enable_ptrace_capstone = false
+capstone_dep = dependency('capstone', required: false)
+ptrace_header_check = cpp.has_header('sys/ptrace.h', required: false)
+if capstone_dep.found() and ptrace_header_check
+  message('Capstone and Ptrace Found. Enabling')
+  enable_ptrace_capstone = true
+  project_deps += [capstone_dep]
+  c_args += ['-DENABLE_PTRACE_CAPSTONE']
+  cpp_args += ['-DENABLE_PTRACE_CAPSTONE']
+else
+  warning('Capstone or ptrace not found. It will disable the ptrace-capstone ASM support')
+endif
+
+project_deps += dependency('threads')
 
 # -----------------------------------------------------------------------------
 # Developer mode options

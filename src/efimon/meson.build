@@ -8,16 +8,24 @@
 lib_efimon_sources += [
   files('arg-parser.cpp'),
   files('proc/io.cpp'),
-  files('proc/list.cpp'),
   files('proc/meminfo.cpp'),
   files('proc/net.cpp'),
   files('proc/stat.cpp'),
   files('proc/thread-tree.cpp'),
+  files('proc/process-tree.cpp'),
   files('uptime.cpp'),
   files('asm-classifier.cpp'),
   files('asm-classifier/x86-classifier.cpp'),
   files('proc/cpuinfo.cpp'),
+  files('process-manager.cpp'),
+  files('logger/csv.cpp'),
 ]
+
+if enable_libprocps
+  lib_efimon_sources += [
+    files('proc/list.cpp'),
+  ]
+endif
 
 if enable_rapl
   lib_efimon_sources += [
@@ -29,6 +37,12 @@ if enable_perf
   lib_efimon_sources += [
     files('perf/record.cpp'),
     files('perf/annotate.cpp'),
+  ]
+endif
+
+if enable_ptrace_capstone
+  lib_efimon_sources += [
+    files('ptrace-capstone/ptrace-capstone.cpp'),
   ]
 endif
 
@@ -44,7 +58,7 @@ if enable_sql
   ]
 endif
 
-if enable_ipmi
+if enable_ipmi and enable_ipmi_sensors
   lib_efimon_sources += [
     files('power/ipmi.cpp'),
   ]

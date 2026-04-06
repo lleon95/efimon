@@ -5,15 +5,17 @@
 # Author: Luis G. Leon Vega <luis.leon@ieee.org>
 #
 
-executable('process-tracking',
-           [
-             files('process-tracking.cpp')
-           ],
-           cpp_args : cpp_args,
-           include_directories : [project_inc],
-           dependencies: [libefimon_dep],
-           install : false,
-)
+if enable_libprocps
+  executable('process-tracking',
+            [
+              files('process-tracking.cpp')
+            ],
+            cpp_args : cpp_args,
+            include_directories : [project_inc],
+            dependencies: [libefimon_dep],
+            install : false,
+  )
+endif
 
 if enable_sql
   executable('sqlite-testing',
@@ -71,6 +73,90 @@ if enable_pcm
             cpp_args : cpp_args,
             include_directories : [project_inc],
             dependencies: [libefimon_dep],
+            install : false,
+  )
+endif
+
+executable('process-manager',
+          [
+            files('process-manager.cpp')
+          ],
+          cpp_args : cpp_args,
+          include_directories : [project_inc],
+          dependencies: [libefimon_dep],
+          install : false,
+)
+
+executable('process-tree',
+          [
+            files('process-tree.cpp')
+          ],
+          cpp_args : cpp_args,
+          include_directories : [project_inc],
+          dependencies: [libefimon_dep],
+          install : false,
+)
+
+executable('thread-tree',
+          [
+            files('thread-tree.cpp')
+          ],
+          cpp_args : cpp_args,
+          include_directories : [project_inc],
+          dependencies: [libefimon_dep],
+          install : false,
+)
+
+executable('process-manager-threaded',
+          [
+            files('process-manager-threaded.cpp')
+          ],
+          cpp_args : cpp_args,
+          include_directories : [project_inc],
+          dependencies: [libefimon_dep, dependency('threads')],
+          install : false,
+)
+
+executable('frequency-query',
+          [
+            files('frequency-query.cpp')
+          ],
+          cpp_args : cpp_args,
+          include_directories : [project_inc],
+          dependencies: [libefimon_dep],
+          install : false,
+)
+
+executable('csv-testing',
+          [
+            files('csv-testing.cpp')
+          ],
+          cpp_args : cpp_args,
+          include_directories : [project_inc],
+          dependencies: [libefimon_dep],
+          install : false,
+)
+
+if enable_zeromq and enable_jsoncpp
+  executable('zeromq-sender',
+            [
+              files('zeromq-sender.cpp')
+            ],
+            cpp_args : cpp_args,
+            include_directories : [project_inc],
+            dependencies: [project_deps, libefimon_dep],
+            install : false,
+  )
+endif
+
+if enable_ptrace_capstone
+  executable('ptrace-capstone-testing',
+            [
+              files('ptrace-capstone-testing.cpp')
+            ],
+            cpp_args : cpp_args,
+            include_directories : [project_inc],
+            dependencies: [project_deps, libefimon_dep],
             install : false,
   )
 endif

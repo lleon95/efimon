@@ -1,0 +1,17 @@
+[Unit]
+Description=EFIMon Daemon
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/efimon/usr/local/bin/efimon-daemon
+Restart=on-failure
+RestartSec=5
+User=root
+
+# Optional: ensure environment is clean
+Environment=PATH=/usr/bin:/usr/sbin:/bin:/sbin:/opt/efimon/usr/local/bin
+Environment=LD_LIBRARY_PATH=/opt/efimon/usr/local/lib64
+
+[Install]
+WantedBy=multi-user.target

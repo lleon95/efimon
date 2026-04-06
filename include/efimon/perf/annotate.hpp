@@ -20,6 +20,7 @@
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <third-party/pstream.hpp>
 #include <vector>
 
 namespace efimon {
@@ -109,8 +110,8 @@ class PerfAnnotateObserver : public Observer {
    *
    * @return vector of capabilities
    */
-  const std::vector<ObserverCapabilities>& GetCapabilities()
-      const noexcept override;
+  const std::vector<ObserverCapabilities>& GetCapabilities() const
+      noexcept override;
 
   /**
    * @brief Get the Status of the Observer
@@ -165,13 +166,11 @@ class PerfAnnotateObserver : public Observer {
   std::string command_prefix_;
   /** Command suffix to execute the annotation */
   std::string command_suffix_;
-  /** File where the annotation happens */
-  std::filesystem::path annotation_;
   /** Classifier to construct the proper histograms */
   std::unique_ptr<AsmClassifier> classifier_;
 
   /** Parses the annotation results */
-  Status ParseResults();
+  Status ParseResults(redi::ipstream& ip);
 
   /** Reconstructs the path if it changes in the record instance */
   void ReconstructPath();

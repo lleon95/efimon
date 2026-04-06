@@ -30,7 +30,7 @@ int main(int /*argc*/, char** /*argv*/) {
   values["ProcessName"] =
       std::make_shared<efimon::Logger::Value<std::string>>("notepad");
   values["PID"] = std::make_shared<efimon::Logger::Value<int64_t>>(2532);
-  logger.InsertColumn(values);
+  logger.InsertRow(values);
 
   return 0;
 }

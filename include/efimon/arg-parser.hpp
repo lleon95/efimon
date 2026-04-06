@@ -73,6 +73,29 @@ class ArgParser {
   const std::string &GetOption(const std::string &option) const;
 
   /**
+   * @brief Gets a vector iterator with the option
+   *
+   * This method must be used only for options with value. Using this method
+   * with switches may lead to incorrect results.
+   *
+   * @param option option to retrieve
+   * @return iterator to the option
+   * @throw std::runtime_exception if the option does not exist
+   */
+  std::vector<std::string>::const_iterator GetBegin(
+      const std::string &option) const;
+
+  /**
+   * @brief Gets the end iterator
+   *
+   * This method gets the end iterator of the option vector
+   *
+   * @return iterator to the end
+   * @throw std::runtime_exception if the option does not exist
+   */
+  std::vector<std::string>::const_iterator GetEnd() const;
+
+  /**
    * @brief Destroy the Arg Parser object
    */
   virtual ~ArgParser() = default;

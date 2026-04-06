@@ -44,6 +44,45 @@ const std::string AsmClassifier::TypeString(
   }
 }
 
+const std::string AsmClassifier::OriginString(const uint8_t origin) {
+  uint8_t i = (origin >> static_cast<uint>(assembly::DataOrigin::INPUT)) &
+              static_cast<uint>(assembly::DataOrigin::MASK);
+  uint8_t o = (origin >> static_cast<uint>(assembly::DataOrigin::OUTPUT)) &
+              static_cast<uint>(assembly::DataOrigin::MASK);
+
+  auto orig = [](const uint8_t val) {
+    switch (val) {
+      case static_cast<uint8_t>(assembly::DataOrigin::MEMORY):
+        return "mem";
+      case static_cast<uint8_t>(assembly::DataOrigin::REGISTER):
+        return "reg";
+      case static_cast<uint8_t>(assembly::DataOrigin::IMMEDIATE):
+        return "imm";
+      default:
+        return "unk";
+    }
+  };
+
+  std::string s;
+  if (origin == 0) {
+    s = "unknown";
+  } else {
+    s = std::string(orig(i)) + std::string(":") + std::string(orig(o));
+  }
+  return s;
+}
+
+const std::pair<assembly::DataOrigin, assembly::DataOrigin>
+AsmClassifier::OriginDecomposed(const uint8_t origin) {
+  uint8_t i = (origin >> static_cast<uint>(assembly::DataOrigin::INPUT)) &
+              static_cast<uint>(assembly::DataOrigin::MASK);
+  uint8_t o = (origin >> static_cast<uint>(assembly::DataOrigin::OUTPUT)) &
+              static_cast<uint>(assembly::DataOrigin::MASK);
+
+  return {static_cast<assembly::DataOrigin>(i),
+          static_cast<assembly::DataOrigin>(o)};
+}
+
 std::unique_ptr<AsmClassifier> AsmClassifier::Build(
     const assembly::Architecture arch) {
   switch (arch) {

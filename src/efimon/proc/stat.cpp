@@ -6,8 +6,6 @@
  * @copyright Copyright (c) 2023. See License for Licensing
  */
 
-#include <efimon/proc/stat.hpp>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,10 +13,13 @@
 
 #include <algorithm>
 #include <cstring>
+#include <efimon/proc/stat.hpp>
 #include <fstream>
+#include <mutex>  // NOLINT
 #include <numeric>
 #include <sstream>
 #include <vector>
+extern std::mutex m_single_uptime;
 
 #define MAX_LEN_FILE_PATH 255
 
@@ -153,6 +154,7 @@ Status ProcStatObserver::Reset() {
 }
 
 uint64_t ProcStatObserver::GetUptime() {
+  std::scoped_lock lock(m_single_uptime);
   float uptime = 0.f;
   float uptime_idle = 0.f;
   FILE *proc_uptime_file = fopen("/proc/uptime", "r");

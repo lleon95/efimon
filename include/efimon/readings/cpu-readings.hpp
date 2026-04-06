@@ -37,6 +37,10 @@ struct CPUReadings : public Readings {
   std::vector<float> core_energy;
   /** Energy per socket */
   std::vector<float> socket_energy;
+  /** Frequency per socket */
+  std::vector<float> socket_frequency;
+  /** Frequency per socket */
+  std::vector<float> core_frequency;
   /** Destructor to enable the inheritance */
   virtual ~CPUReadings() = default;
 };

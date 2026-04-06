@@ -57,7 +57,11 @@ int main(int argc, char **argv) {
               << std::endl;
     for (const auto &family : type.second) {
       std::cout << "\t\t" << AsmClassifier::FamilyString(family.first) << ": "
-                << family.second << std::endl;
+                << std::endl;
+      for (const auto &origin : family.second) {
+        std::cout << "\t\t\t" << AsmClassifier::OriginString(origin.first)
+                  << ": " << origin.second << std::endl;
+      }
     }
   }
 

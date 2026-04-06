@@ -7,9 +7,9 @@
  */
 
 #include <efimon/proc/thread-tree.hpp>
-
-#include <filesystem>
+#include <filesystem>  // NOLINT
 #include <string>
+#include <vector>
 
 namespace efimon {
 

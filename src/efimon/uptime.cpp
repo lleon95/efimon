@@ -12,8 +12,15 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <mutex>  // NOLINT
+
+#define EXPORT __attribute__((visibility("default")))
+
+EXPORT std::mutex m_single_uptime;
+
 namespace efimon {
 uint64_t GetUptime() {
+  std::scoped_lock lock(m_single_uptime);
   float uptime = 0.f;
   float uptime_idle = 0.f;
   FILE *proc_uptime_file = fopen("/proc/uptime", "r");
