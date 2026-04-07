@@ -157,6 +157,7 @@ if enable_ptrace_capstone
             cpp_args : cpp_args,
             include_directories : [project_inc],
             dependencies: [project_deps, libefimon_dep])
+endif
 
 if enable_nethogs
   executable('nethogs-test',
