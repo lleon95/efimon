@@ -6,14 +6,15 @@
  * @copyright Copyright (c) 2024. See License for Licensing
  */
 
-#include <efimon/proc/list.hpp>
-#include <efimon/status.hpp>
+#include <proc/readproc.h>
+#include <pwd.h>
 
 #include <algorithm>
 #include <cstring>
-
-#include <proc/readproc.h>
-#include <pwd.h>
+#include <efimon/proc/list.hpp>
+#include <efimon/status.hpp>
+#include <utility>
+#include <vector>
 
 namespace efimon {
 

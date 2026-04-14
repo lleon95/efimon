@@ -109,8 +109,8 @@ class IPMIMeterObserver : public Observer {
    *
    * @return vector of capabilities
    */
-  const std::vector<ObserverCapabilities>& GetCapabilities() const
-      noexcept override;
+  const std::vector<ObserverCapabilities>& GetCapabilities()
+      const noexcept override;
 
   /**
    * @brief Get the Status of the Observer

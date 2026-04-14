@@ -6,12 +6,11 @@
  * @copyright Copyright (c) 2024. See License for Licensing
  */
 
-#include <efimon/arg-parser.hpp>
-#include <efimon/process-manager.hpp>
-
 #include <algorithm>
 #include <chrono>              // NOLINT
 #include <condition_variable>  // NOLINT
+#include <efimon/arg-parser.hpp>
+#include <efimon/process-manager.hpp>
 #include <iostream>
 #include <mutex>  // NOLINT
 #include <string>

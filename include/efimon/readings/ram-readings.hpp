@@ -10,9 +10,8 @@
 #define INCLUDE_EFIMON_READINGS_RAM_READINGS_HPP_
 
 #include <cstdint>
-#include <vector>
-
 #include <efimon/readings.hpp>
+#include <vector>
 
 namespace efimon {
 

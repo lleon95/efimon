@@ -15,7 +15,7 @@
 #include <efimon/perf/record-readings.hpp>
 #include <efimon/readings.hpp>
 #include <efimon/status.hpp>
-#include <filesystem>
+#include <filesystem>  // NOLINT(build/c++17)
 #include <string>
 #include <vector>
 
@@ -214,4 +214,4 @@ class PerfRecordObserver : public Observer {
 
 } /* namespace efimon */
 
-#endif /* INCLUDE_EFIMON_PERF_RECORD_HPP_ */
+#endif  // INCLUDE_EFIMON_PERF_RECORD_HPP_

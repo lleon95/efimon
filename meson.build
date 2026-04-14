@@ -11,7 +11,7 @@ project('efimon', ['c','cpp'], version : '0.2.0',
                            'c_std=c17',
                            ],
         license: 'LGPL-2.1-only',
-        meson_version: '>= 1.0.0' 
+        meson_version: '>= 1.0.0'
        )
 
 # -----------------------------------------------------------------------------
@@ -98,6 +98,36 @@ if get_option('enable-pcm')
   enable_pcm = true
 else
   warning('Intel PCM is disabled')
+endif
+
+# Add ModuloIODisk submodule
+enable_moduloio = false
+if get_option('enable-moduloio')
+  moduloio_proj = subproject('ModuloIODisk')
+  moduloio_dep = declare_dependency(
+    include_directories: moduloio_proj.get_variable('inc'),
+    dependencies: moduloio_proj.get_variable('libbpf')
+  )
+  project_deps += moduloio_dep
+  enable_moduloio = true
+  message('ModuloIODisk submodule enabled')
+else
+  warning('ModuloIODisk submodule is disabled')
+endif
+
+# Add Sampling_by_PID submodule
+enable_sampling_by_pid = false
+if get_option('enable-sampling-by-pid')
+  sampling_proj = subproject('Sampling_by_PID')
+  sampling_dep = declare_dependency(
+    include_directories: sampling_proj.get_variable('projectinc'),
+    dependencies: sampling_proj.get_variable('project_deps')
+  )
+  project_deps += sampling_dep
+  enable_sampling_by_pid = true
+  message('Sampling_by_PID submodule enabled')
+else
+  warning('Sampling_by_PID submodule is disabled')
 endif
 
 # Verify if RAPL exists

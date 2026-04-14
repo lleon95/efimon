@@ -9,15 +9,14 @@
 #ifndef INCLUDE_EFIMON_PROC_NET_HPP_
 #define INCLUDE_EFIMON_PROC_NET_HPP_
 
-#include <string>
-#include <unordered_map>
-#include <vector>
-
 #include <efimon/observer-enums.hpp>
 #include <efimon/observer.hpp>
 #include <efimon/readings.hpp>
 #include <efimon/readings/net-readings.hpp>
 #include <efimon/status.hpp>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace efimon {
 
@@ -106,8 +105,8 @@ class ProcNetObserver : public Observer {
    *
    * @return vector of capabilities
    */
-  const std::vector<ObserverCapabilities>& GetCapabilities() const
-      noexcept override;
+  const std::vector<ObserverCapabilities>& GetCapabilities()
+      const noexcept override;
 
   /**
    * @brief Get the Status of the Observer

@@ -7,10 +7,10 @@
  */
 
 #include <efimon/process-manager.hpp>
-
-#include <third-party/pstream.hpp>
-
 #include <iostream>
+#include <string>
+#include <third-party/pstream.hpp>
+#include <vector>
 
 namespace efimon {
 

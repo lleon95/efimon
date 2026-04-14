@@ -6,12 +6,12 @@
  * @copyright Copyright (c) 2024. See License for Licensing
  */
 
-#include <efimon/proc/cpuinfo.hpp>
-
 #include <unistd.h>
 
+#include <efimon/proc/cpuinfo.hpp>
 #include <iostream>
 #include <utility>
+#include <vector>
 
 int main(int, char **) {
   efimon::CPUInfo info{};

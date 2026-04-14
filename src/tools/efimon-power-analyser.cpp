@@ -23,6 +23,7 @@
 
 #include <unistd.h>
 
+#include <algorithm>
 #include <array>
 #include <condition_variable>  // NOLINT
 #include <efimon/arg-parser.hpp>
@@ -37,10 +38,13 @@
 #include <efimon/proc/stat.hpp>
 #include <efimon/process-manager.hpp>
 #include <iostream>
+#include <memory>
 #include <mutex>  // NOLINT
 #include <string>
 #include <third-party/pstream.hpp>
 #include <thread>  // NOLINT
+#include <unordered_map>
+#include <vector>
 
 using namespace efimon;  // NOLINT
 

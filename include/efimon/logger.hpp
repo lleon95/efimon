@@ -9,13 +9,12 @@
 #ifndef INCLUDE_EFIMON_LOGGER_HPP_
 #define INCLUDE_EFIMON_LOGGER_HPP_
 
+#include <efimon/status.hpp>
 #include <memory>
 #include <string>
 #include <tuple>
 #include <type_traits>
 #include <unordered_map>
-
-#include <efimon/status.hpp>
 
 namespace efimon {
 class Logger {

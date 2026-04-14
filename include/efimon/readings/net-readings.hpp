@@ -10,10 +10,9 @@
 #define INCLUDE_EFIMON_READINGS_NET_READINGS_HPP_
 
 #include <cstdint>
+#include <efimon/readings.hpp>
 #include <string>
 #include <vector>
-
-#include <efimon/readings.hpp>
 
 namespace efimon {
 

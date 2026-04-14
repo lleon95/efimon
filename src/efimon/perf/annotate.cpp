@@ -17,9 +17,8 @@
 #include <memory>
 #include <sstream>
 #include <string>
-#include <vector>
-
 #include <third-party/pstream.hpp>
+#include <vector>
 
 #ifndef PERF_ANNOTATE_THRES
 #define PERF_ANNOTATE_THRES 0.01
@@ -191,8 +190,9 @@ uint PerfAnnotateObserver::GetPID() const noexcept {
   return this->record_.GetPID();
 }
 
-const std::vector<ObserverCapabilities>& PerfAnnotateObserver::GetCapabilities()
-    const noexcept {
+const std::vector<ObserverCapabilities>&
+PerfAnnotateObserver::GetCapabilities()  // NOLINT
+    const noexcept {                     // NOLINT
   return this->caps_;
 }
 

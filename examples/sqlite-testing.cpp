@@ -6,11 +6,11 @@
  * @copyright Copyright (c) 2024. See License for Licensing
  */
 
+#include <efimon/logger/sqlite.hpp>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
-
-#include <efimon/logger/sqlite.hpp>
 
 using namespace efimon;  // NOLINT
 

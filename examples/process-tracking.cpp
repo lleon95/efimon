@@ -9,12 +9,11 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <efimon/proc/list.hpp>
 #include <iomanip>
 #include <iostream>
 #include <string>
 #include <vector>
-
-#include <efimon/proc/list.hpp>
 
 int main(int argc, char **argv) {
   std::vector<std::string> users;

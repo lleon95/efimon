@@ -9,6 +9,7 @@
 #include <efimon/arg-parser.hpp>
 #include <efimon/logger/macros.hpp>
 #include <efimon/proc/process-tree.hpp>
+#include <iostream>
 #include <string>
 #include <unordered_map>
 #include <vector>

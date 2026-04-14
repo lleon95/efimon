@@ -18,6 +18,7 @@
 #include <mutex>  // NOLINT
 #include <numeric>
 #include <sstream>
+#include <string>
 #include <vector>
 extern std::mutex m_single_uptime;
 

@@ -92,8 +92,9 @@ enum class DataOrigin {
  * The first type determines the instruction type, the second the family or
  * group and the third the data origin
  */
-using InstructionPair =
-    std::tuple<assembly::InstructionType, assembly::InstructionFamily, uint8_t>;
+using InstructionPair = std::tuple<assembly::InstructionType,
+                                   assembly::InstructionFamily,  // NOLINT
+                                   uint8_t>;                     // NOLINT
 
 /**
  * Interface to classify the instructions into families and types
@@ -108,9 +109,8 @@ class AsmClassifier {
    * @param operands operands types
    * @return InstructionPair
    */
-  virtual InstructionPair Classify(const std::string &inst,
-                                   const std::string &operands) const
-      noexcept = 0;
+  virtual InstructionPair Classify(
+      const std::string &inst, const std::string &operands) const noexcept = 0;
 
   /**
    * Determines if the operands belong to memory, immediate or register values
@@ -118,8 +118,8 @@ class AsmClassifier {
    * @param operands as it comes from objdump
    * @return string with r, i or m symbolising the type of operands
    */
-  virtual const std::string OperandTypes(const std::string &operands) const
-      noexcept = 0;
+  virtual const std::string OperandTypes(
+      const std::string &operands) const noexcept = 0;
 
   /**
    * Default destructor for inheritance (implementation)

@@ -37,8 +37,8 @@ class x86Classifier : public AsmClassifier {
    * @param operands as it comes from objdump
    * @return string with r, i or m symbolising the type of operands
    */
-  const std::string OperandTypes(const std::string &operands) const
-      noexcept override;
+  const std::string OperandTypes(
+      const std::string &operands) const noexcept override;
 
   /**
    * Default destructor for inheritance (implementation)

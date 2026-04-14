@@ -6,6 +6,12 @@ repos:
         args: [--style=google]
     -   id: cpplint
         args: [--filter=-build/include_order]
+        exclude: |
+          (?x)^(
+            subprojects/.*/include/.*\.skel\.h|
+            subprojects/.*/src/vmlinux\.h|
+            include/third-party/.*
+          )$
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.1.0
     hooks:
