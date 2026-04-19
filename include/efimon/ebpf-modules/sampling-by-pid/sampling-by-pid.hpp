@@ -1,9 +1,9 @@
 /**
  * @file sampling-by-pid.hpp
- * @author Luis G. Leon-Vega (luis.leon@ieee.org)
+ * @author Diego Avila (diego.avila@uned.cr)
  * @brief Sampling-by-PID eBPF-based CPU cycle sampler
  *
- * @copyright Copyright (c) 2024. See License for Licensing
+ * @copyright Copyright (c) 2026. See License for Licensing
  */
 
 #ifndef INCLUDE_EFIMON_EBPF_MODULES_SAMPLING_BY_PID_SAMPLING_BY_PID_HPP_
@@ -45,12 +45,13 @@ class SamplingByPIDObserver : public Observer {
    * @param interval interval of how often the profiler is queried in
    * milliseconds. 0 for manual query.
    * @param frequency sampling frequency in Hz (how often CPU cycles are
-   * sampled). Default 50000 Hz.
+   * sampled). Default 10000 Hz. Capped at runtime to the kernel's
+   * perf_event_max_sample_rate.
    */
   SamplingByPIDObserver(const uint pid = 0,
                         const ObserverScope = ObserverScope::PROCESS,
                         const uint64_t interval = 0,
-                        const uint64_t frequency = 50000);
+                        const uint64_t frequency = 10000);
 
   /**
    * @brief Manually triggers the update in case that there is no interval
@@ -160,6 +161,20 @@ class SamplingByPIDObserver : public Observer {
    */
   virtual ~SamplingByPIDObserver();
 
+  /**
+   * @brief Get the number of raw eBPF samples collected
+   */
+  uint64_t GetCollectedSamplesCount() const noexcept {
+    return collected_samples_.size();
+  }
+
+  /**
+   * @brief Get the number of successfully decoded userspace samples
+   */
+  uint64_t GetDecodedSamplesCount() const noexcept {
+    return samples_collected_;
+  }
+
  private:
   /** Instruction readings: where the results are going to be encapsulated */
   InstructionReadings readings_;
@@ -187,6 +202,14 @@ class SamplingByPIDObserver : public Observer {
   std::string inst_;
   /** Number of samples collected */
   uint64_t samples_collected_;
+  /** Raw samples collected from the eBPF ring buffer */
+  struct CollectedSample {
+    uint32_t pid;
+    uint32_t tid;
+    uint64_t ip;
+    uint64_t ts;
+  };
+  std::vector<CollectedSample> collected_samples_;
   /** Threading for asynchronous execution */
   std::unique_ptr<std::thread> worker_thread_;
   /** Mutex for synchronisation and coherency */
@@ -212,12 +235,6 @@ class SamplingByPIDObserver : public Observer {
   Status PollRingBuffer();
 
   /**
-   * @brief Process a single sample from the ring buffer
-   */
-  Status ProcessSample(const uint32_t pid, const uint32_t tid,
-                       const uint64_t ip, const uint64_t ts);
-
-  /**
    * @brief Decode the instruction at the given IP
    */
   Status DecodeInstruction(const uint64_t ip);
@@ -230,6 +247,16 @@ class SamplingByPIDObserver : public Observer {
 
   /** Worker to poll samples in an asynchronous way */
   void Worker();
+
+  /** Ring buffer callback needs access to ProcessSample */
+  friend int handle_rb_event(void* ctx, void* data, size_t size);
+
+ public:
+  /**
+   * @brief Process a single sample from the ring buffer
+   */
+  Status ProcessSample(const uint32_t pid, const uint32_t tid,
+                       const uint64_t ip, const uint64_t ts);
 };
 
 } /* namespace efimon */

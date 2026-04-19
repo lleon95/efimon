@@ -63,3 +63,9 @@ if enable_ipmi and enable_ipmi_sensors
     files('power/ipmi.cpp'),
   ]
 endif
+
+if enable_sampling_by_pid
+  lib_efimon_sources += [
+    files('ebpf-modules/sampling-by-pid/sampling-by-pid.cpp'),
+  ]
+endif

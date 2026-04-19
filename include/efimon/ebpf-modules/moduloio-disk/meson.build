@@ -1,8 +1,8 @@
 #
 # See LICENSE for more information about licensing
-#  Copyright 2024
+#  Copyright 2026
 #
-# Author: Luis G. Leon Vega <luis.leon@ieee.org>
+# Author: Diego Avila <diego.avila@uned.cr>
 #
 
 lib_moduloio_disk_headers = []

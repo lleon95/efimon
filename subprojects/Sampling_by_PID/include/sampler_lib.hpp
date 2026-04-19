@@ -1,9 +1,10 @@
 /**
  * @file sampler_lib.hpp
- * @author CPU Sampling Module Contributors
+ * @author Diego Avila <diego.avila@uned.cr>
+ *         Anthony Montero <anthonymr2010@estudiantec.cr>
  * @brief CPU sampling library interface using eBPF
  *
- * @copyright Copyright (c) 2024. See License for Licensing
+ * @copyright Copyright (c) 2026. See License for Licensing
  */
 
 #pragma once

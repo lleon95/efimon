@@ -160,3 +160,15 @@ if enable_ptrace_capstone
             install : false,
   )
 endif
+
+if enable_sampling_by_pid
+  executable('sampling-by-pid-testing',
+            [
+              files('sampling-by-pid-testing.cpp')
+            ],
+            cpp_args : cpp_args,
+            include_directories : [project_inc],
+            dependencies: [project_deps, libefimon_dep],
+            install : false,
+  )
+endif

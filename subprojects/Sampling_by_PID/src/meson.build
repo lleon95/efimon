@@ -54,7 +54,7 @@ sampler_lib = static_library('cpu_sampler',
 sampler_dep = declare_dependency(
 	link_with: sampler_lib,
 	include_directories: [projectinc, include_directories('.' / '..' / 'include')],
-	dependencies: [project_deps]
+	dependencies: [project_deps, skeleton_dep]
 )
 
 install_headers('../include/sampler_lib.hpp', subdir: 'cpuconsumptionmodule')

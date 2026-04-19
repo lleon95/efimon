@@ -1,12 +1,14 @@
 /**
  * @file prog.bpf.c
- * @author CPU Sampling Module Contributors
+ * @author Diego Avila <diego.avila@uned.cr>
+ *         Anthony Montero <anthonymr2010@estudiantec.cr>
  * @brief eBPF program for CPU cycle sampling via perf events
  *
- * @copyright Copyright (c) 2024. See License for Licensing
+ * @copyright Copyright (c) 2026. See License for Licensing
  */
 
 // prog.bpf.c
+
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>

@@ -1,9 +1,10 @@
 /**
  * @file sampler_lib.cpp
- * @author Luis G. Leon-Vega (luis.leon@ieee.org)
+ * @author Diego Avila <diego.avila@uned.cr>
+ *         Anthony Montero <anthonymr2010@estudiantec.cr>
  * @brief CPU sampling library implementation using eBPF
  *
- * @copyright Copyright (c) 2024. See License for Licensing
+ * @copyright Copyright (c) 2026. See License for Licensing
  */
 
 #include "sampler_lib.hpp"  // NOLINT
@@ -96,7 +97,7 @@ bool run_sampling(const Config& config, std::vector<Sample>& out_samples,
   std::vector<int> pfd(ncpus, -1);
   int prog_fd = bpf_program__fd(skel->progs.on_sample);
   bool attached = false;
-  callback_ctx_t cb_ctx{.out = &out_samples};
+  callback_ctx_t cb_ctx{&out_samples};
   struct ring_buffer* rb = nullptr;
 
   for (int cpu = 0; cpu < ncpus; cpu++) {

@@ -121,10 +121,13 @@ if get_option('enable-sampling-by-pid')
   sampling_proj = subproject('Sampling_by_PID')
   sampling_dep = declare_dependency(
     include_directories: sampling_proj.get_variable('projectinc'),
-    dependencies: sampling_proj.get_variable('project_deps')
+    dependencies: [sampling_proj.get_variable('project_deps'),
+                   sampling_proj.get_variable('sampler_dep')]
   )
   project_deps += sampling_dep
   enable_sampling_by_pid = true
+  c_args += ['-DENABLE_SAMPLING_BY_PID']
+  cpp_args += ['-DENABLE_SAMPLING_BY_PID']
   message('Sampling_by_PID submodule enabled')
 else
   warning('Sampling_by_PID submodule is disabled')

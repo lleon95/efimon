@@ -1,9 +1,9 @@
 /**
  * @file moduloio-disk.hpp
- * @author Luis G. Leon-Vega (luis.leon@ieee.org)
+ * @author Diego Avila (diego.avila@uned.cr)
  * @brief ModuloIODisk eBPF-based I/O disk event tracer
  *
- * @copyright Copyright (c) 2024. See License for Licensing
+ * @copyright Copyright (c) 2026. See License for Licensing
  */
 
 #ifndef INCLUDE_EFIMON_EBPF_MODULES_MODULOIO_DISK_MODULOIO_DISK_HPP_

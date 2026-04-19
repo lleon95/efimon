@@ -1,9 +1,10 @@
 /**
  * @file benchmark.c
- * @author CPU Sampling Module Contributors
+ * @author Diego Avila <diego.avila@uned.cr>
+ *         Anthony Montero <anthonymr2010@estudiantec.cr>
  * @brief Benchmark program for CPU consumption testing
  *
- * @copyright Copyright (c) 2024. See License for Licensing
+ * @copyright Copyright (c) 2026. See License for Licensing
  */
 
 #define _POSIX_C_SOURCE 200809L
