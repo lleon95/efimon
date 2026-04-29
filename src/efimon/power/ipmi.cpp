@@ -14,6 +14,7 @@
 #include <string>
 #include <third-party/pstream.hpp>
 #include <vector>
+#include <iostream>
 
 namespace efimon {
 
@@ -22,9 +23,8 @@ extern uint64_t GetUptime();
 /** A maximum number of PSUs supported in a single system */
 static constexpr int kMaxPSU = 100;
 
-static constexpr char kIPMIInfoCmd[] = "ipmi-oem dell power-supply-info";
-static constexpr char kIPMIPwrCmd[] =
-    "ipmi-oem dell get-instantaneous-power-consumption-data";
+[[maybe_unused]] static constexpr char kIPMIInfoCmd[] = "ipmi-oem dell power-supply-info";
+static constexpr char kIPMIPwrCmd[] = "ipmi-sensors | grep PWR_PSU";
 static constexpr char kIPMISensorCmd[] = "ipmi-sensors | grep Fan";
 
 IPMIMeterObserver::IPMIMeterObserver(const uint /* pid */,
@@ -45,12 +45,6 @@ IPMIMeterObserver::IPMIMeterObserver(const uint /* pid */,
   this->caps_.emplace_back();
   this->caps_[0].type = type;
 
-  Status st = this->GetInfo();
-  if (Status::OK != st.code) {
-    throw Status{Status::ACCESS_DENIED, "Cannot get info from IPMI"};
-  }
-
-  this->GetInfo();
   this->Reset();
   this->Trigger();
 
@@ -110,63 +104,73 @@ Status IPMIMeterObserver::Trigger() {
   if (st.code != Status::OK) {
     return st;
   }
-#endif /* ENABLE_IPMI_SENSORS */
-
-  /* Check if the parse is for a single PSU */
-  if (this->psu_id_ < this->num_psus_) {
-    st = this->GetPower(this->psu_id_);
-    this->ParseResults(this->psu_id_);
-    this->valid_ = true;
+  
+  /* Get for all PSUs */
+  st = this->GetPower(0);
+  if (st.code != Status::OK) {
     return st;
   }
+  
+  this->valid_ = true;
 
-  /* Get for all PSUs */
   for (uint i = 0; i < this->num_psus_; ++i) {
-    st = this->GetPower(i);
     this->ParseResults(i);
   }
 
-  this->valid_ = true;
+#endif /* ENABLE_IPMI_SENSORS */
+
   return st;
 }
 
-Status IPMIMeterObserver::GetPower(const uint psu_id) {
-  std::string command =
-      std::string(kIPMIPwrCmd) + " " + std::to_string(psu_id + 1);
+Status IPMIMeterObserver::GetPower([[maybe_unused]] const uint psu_id) {
+  Status ret{};
 
   /* Execute the command */
-  redi::ipstream ip(command, redi::pstreambuf::pstdout);
+  redi::ipstream ip(kIPMIPwrCmd, redi::pstreambuf::pstdout);
 
   /* Parse the output */
   if (!ip.is_open()) {
-    return Status{Status::NOT_FOUND, "The IPMI power file cannot be opened"};
+    return Status{Status::NOT_FOUND, "The IPMI sensor cannot be opened"};
   }
+
+  /* Clean the vector */
+  this->readings_.psu_power.clear();
+  this->readings_.psu_max_power.clear();
+  this->readings_.overall_power = 0.;
+  float power = 0.f;
 
   std::string payload;
-  uint occurrences = 0;
   while (std::getline(ip, payload)) {
-    std::string::size_type idx_word, idx_colon, idx_watts;
-    idx_word = payload.find("Instantaneous Power");
-    idx_colon = payload.find(": ");
-    idx_watts = payload.find("W");
+    std::string::size_type idx_bar = 0, idx_w;
 
-    if (std::string::npos != idx_word) {
-      std::string::size_type start_offset = idx_colon + 2;
-      std::string::size_type payload_size = idx_watts - 1 - start_offset;
-      float val = std::stof(payload.substr(idx_colon + 2, payload_size));
-      this->readings_.psu_power.at(psu_id) = val;
-      this->readings_.overall_power += val;
-      ++occurrences;
+    /* Find the W keyword */
+    idx_w = payload.find("| W");
+    if (std::string::npos == idx_w) {
+      continue;
     }
+
+    /* Find the third bar */
+    std::string substpayload = payload;
+    for (int i = 0; i < 3; ++i) {
+      idx_bar = substpayload.find("|");
+      substpayload = substpayload.substr(idx_bar + 1);
+    }
+    /* Find the fourth relative to the substring */
+    idx_bar = substpayload.find("|");
+    substpayload = substpayload.substr(0, idx_bar - 1);
+
+    float val = std::stof(substpayload);
+    this->readings_.psu_power.emplace_back(val);
+    this->readings_.psu_max_power.emplace_back(val);
+    power += val;
   }
 
-  if (!occurrences) {
-    return Status{Status::NOT_FOUND,
-                  std::string("Cannot get the consumption of the PSU") +
-                      std::to_string(psu_id)};
-  }
+  this->readings_.overall_power =
+      power / this->readings_.psu_power.size();
+  this->num_psus_ = this->readings_.psu_power.size();
+  this->readings_.psu_energy.resize(this->num_psus_, 0.f);
 
-  return Status{};
+  return ret;
 }
 
 Status IPMIMeterObserver::GetFanSpeed() {
@@ -274,8 +278,6 @@ Status IPMIMeterObserver::Reset() {
   this->readings_.overall_energy = 0;
   this->readings_.psu_power.clear();
   this->readings_.psu_energy.clear();
-  this->readings_.psu_power.resize(this->num_psus_, 0.f);
-  this->readings_.psu_energy.resize(this->num_psus_, 0.f);
   this->readings_.psu_max_power = this->max_power_;
   this->fan_readings_.overall_speed = 0.f;
   this->fan_readings_.fan_speeds.clear();
