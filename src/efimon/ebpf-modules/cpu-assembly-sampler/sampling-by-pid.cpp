@@ -19,7 +19,7 @@
 #include <cstdio>
 #include <cstring>
 #include <efimon/asm-classifier.hpp>
-#include <efimon/ebpf-modules/sampling-by-pid/sampling-by-pid.hpp>
+#include <efimon/ebpf-modules/cpu-assembly-sampler/sampling-by-pid.hpp>
 #include <efimon/observer-enums.hpp>
 #include <efimon/observer.hpp>
 #include <efimon/readings.hpp>

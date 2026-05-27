@@ -26,11 +26,11 @@
 
 namespace cpu_sampler {
 
-static volatile sig_atomic_t g_stop = 0;
+static volatile sig_atomic_t g_i_stop = 0;
 
-static void sig_handler(int) { g_stop = 1; }
+static void sig_handler(int) { g_i_stop = 1; }
 
-void request_stop() { g_stop = 1; }
+void request_stop() { g_i_stop = 1; }
 
 static int perf_event_open(struct perf_event_attr* attr, pid_t pid, int cpu,
                            int group_fd, uint64_t flags) {
@@ -38,7 +38,7 @@ static int perf_event_open(struct perf_event_attr* attr, pid_t pid, int cpu,
 }
 
 struct callback_ctx_t {
-  std::vector<Sample>* out;
+  std::vector<Sample>* p_out;
 };
 
 static int handle_event(void* ctx, void* data, size_t size) {
@@ -46,121 +46,123 @@ static int handle_event(void* ctx, void* data, size_t size) {
     return 0;
   }
 
-  auto* cb = static_cast<callback_ctx_t*>(ctx);
-  cb->out->push_back(*static_cast<Sample*>(data));
+  auto* p_cb = static_cast<callback_ctx_t*>(ctx);
+  p_cb->p_out->push_back(*static_cast<Sample*>(data));
   return 0;
 }
 
-bool run_sampling(const Config& config, std::vector<Sample>& out_samples,
-                  std::string& error_message) {
-  error_message.clear();
+bool run_sampling(const Config& st_config, std::vector<Sample>& v_out_samples,
+                  std::string& str_error_message) {
+  str_error_message.clear();
 
-  if (config.target_pid <= 0) {
-    error_message = "invalid target_pid";
+  if (st_config.target_pid <= 0) {
+    str_error_message = "invalid target_pid";
     return false;
   }
-  if (config.frequency_hz == 0) {
-    error_message = "frequency_hz must be > 0";
+  if (st_config.frequency_hz == 0) {
+    str_error_message = "frequency_hz must be > 0";
     return false;
   }
-  if (config.duration_seconds <= 0) {
-    error_message = "duration_seconds must be > 0";
+  if (st_config.duration_seconds <= 0) {
+    str_error_message = "duration_seconds must be > 0";
     return false;
   }
 
-  g_stop = 0;
+  g_i_stop = 0;
   signal(SIGINT, sig_handler);
   signal(SIGTERM, sig_handler);
 
-  prog_bpf* skel = prog_bpf__open_and_load();
-  if (!skel) {
-    error_message = "failed to open/load BPF skeleton";
+  prog_bpf* p_skel = prog_bpf__open_and_load();
+  if (!p_skel) {
+    str_error_message = "failed to open/load BPF skeleton";
     return false;
   }
 
-  struct perf_event_attr attr {};
-  memset(&attr, 0, sizeof(attr));
-  attr.type = PERF_TYPE_HARDWARE;
-  attr.config = PERF_COUNT_HW_CPU_CYCLES;
-  attr.size = sizeof(attr);
-  attr.sample_type = PERF_SAMPLE_IP | PERF_SAMPLE_TID | PERF_SAMPLE_TIME;
-  attr.freq = 1;
-  attr.sample_freq = config.frequency_hz;
-  attr.precise_ip = 2;
-  attr.disabled = 0;
+  struct perf_event_attr st_attr {};
+  memset(&st_attr, 0, sizeof(st_attr));
+  st_attr.type = PERF_TYPE_HARDWARE;
+  st_attr.config = PERF_COUNT_HW_CPU_CYCLES;
+  st_attr.size = sizeof(st_attr);
+  st_attr.sample_type = PERF_SAMPLE_IP | PERF_SAMPLE_TID | PERF_SAMPLE_TIME;
+  st_attr.freq = 1;
+  st_attr.sample_freq = st_config.frequency_hz;
+  st_attr.precise_ip = 2;
+  st_attr.disabled = 0;
 
-  int ncpus = sysconf(_SC_NPROCESSORS_ONLN);
-  if (ncpus <= 0) {
-    ncpus = 1;
+  int i_cpu_count = sysconf(_SC_NPROCESSORS_ONLN);
+  if (i_cpu_count <= 0) {
+    i_cpu_count = 1;
   }
 
-  std::vector<int> pfd(ncpus, -1);
-  int prog_fd = bpf_program__fd(skel->progs.on_sample);
-  bool attached = false;
-  callback_ctx_t cb_ctx{&out_samples};
-  struct ring_buffer* rb = nullptr;
+  std::vector<int> v_perf_fds(i_cpu_count, -1);
+  int i_prog_fd = bpf_program__fd(p_skel->progs.on_sample);
+  bool b_attached = false;
+  callback_ctx_t st_cb_ctx{&v_out_samples};
+  struct ring_buffer* p_rb = nullptr;
 
-  for (int cpu = 0; cpu < ncpus; cpu++) {
-    pfd[cpu] = perf_event_open(&attr, config.target_pid, cpu, -1, 0);
-    if (pfd[cpu] < 0) {
+  for (int i_cpu = 0; i_cpu < i_cpu_count; i_cpu++) {
+    v_perf_fds[i_cpu] =
+        perf_event_open(&st_attr, st_config.target_pid, i_cpu, -1, 0);
+    if (v_perf_fds[i_cpu] < 0) {
       continue;
     }
 
-    if (ioctl(pfd[cpu], PERF_EVENT_IOC_SET_BPF, prog_fd) < 0) {
-      error_message = "PERF_EVENT_IOC_SET_BPF failed";
+    if (ioctl(v_perf_fds[i_cpu], PERF_EVENT_IOC_SET_BPF, i_prog_fd) < 0) {
+      str_error_message = "PERF_EVENT_IOC_SET_BPF failed";
       goto cleanup;
     }
 
-    if (ioctl(pfd[cpu], PERF_EVENT_IOC_ENABLE, 0) < 0) {
-      error_message = "PERF_EVENT_IOC_ENABLE failed";
+    if (ioctl(v_perf_fds[i_cpu], PERF_EVENT_IOC_ENABLE, 0) < 0) {
+      str_error_message = "PERF_EVENT_IOC_ENABLE failed";
       goto cleanup;
     }
 
-    attached = true;
+    b_attached = true;
   }
 
-  if (!attached) {
-    error_message = "failed to open any perf event for target pid";
+  if (!b_attached) {
+    str_error_message = "failed to open any perf event for target pid";
     goto cleanup;
   }
 
-  rb = ring_buffer__new(bpf_map__fd(skel->maps.rb), handle_event, &cb_ctx,
-                        nullptr);
-  if (!rb) {
-    error_message = "failed to create ring buffer";
+  p_rb = ring_buffer__new(bpf_map__fd(p_skel->maps.rb), handle_event,
+                          &st_cb_ctx, nullptr);
+  if (!p_rb) {
+    str_error_message = "failed to create ring buffer";
     goto cleanup;
   }
 
   {
-    auto start = std::chrono::steady_clock::now();
-    while (!g_stop) {
-      ring_buffer__poll(rb, 100);
-      auto now = std::chrono::steady_clock::now();
-      auto elapsed =
-          std::chrono::duration_cast<std::chrono::seconds>(now - start).count();
-      if (elapsed >= config.duration_seconds) {
+    auto tp_start = std::chrono::steady_clock::now();
+    while (!g_i_stop) {
+      ring_buffer__poll(p_rb, 100);
+      auto tp_now = std::chrono::steady_clock::now();
+      auto i_elapsed_seconds =
+          std::chrono::duration_cast<std::chrono::seconds>(tp_now - tp_start)
+              .count();
+      if (i_elapsed_seconds >= st_config.duration_seconds) {
         break;
       }
     }
   }
 
-  ring_buffer__free(rb);
-  prog_bpf__destroy(skel);
-  for (int fd : pfd) {
-    if (fd >= 0) {
-      close(fd);
+  ring_buffer__free(p_rb);
+  prog_bpf__destroy(p_skel);
+  for (int i_fd : v_perf_fds) {
+    if (i_fd >= 0) {
+      close(i_fd);
     }
   }
   return true;
 
 cleanup:
-  if (rb) {
-    ring_buffer__free(rb);
+  if (p_rb) {
+    ring_buffer__free(p_rb);
   }
-  prog_bpf__destroy(skel);
-  for (int fd : pfd) {
-    if (fd >= 0) {
-      close(fd);
+  prog_bpf__destroy(p_skel);
+  for (int i_fd : v_perf_fds) {
+    if (i_fd >= 0) {
+      close(i_fd);
     }
   }
   return false;

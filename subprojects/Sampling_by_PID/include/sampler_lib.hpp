@@ -31,10 +31,10 @@ struct Config {
 // Request a graceful stop for a currently running sampling session.
 void request_stop();
 
-// Runs eBPF perf-event sampling and appends collected samples to out_samples.
-// Returns true on success. If false, error_message contains a human-readable
-// error.
-bool run_sampling(const Config& config, std::vector<Sample>& out_samples,
-                  std::string& error_message);
+// Runs eBPF perf-event sampling and appends collected samples to v_out_samples.
+// Returns true on success. If false, str_error_message contains a
+// human-readable error.
+bool run_sampling(const Config& st_config, std::vector<Sample>& v_out_samples,
+                  std::string& str_error_message);
 
 }  // namespace cpu_sampler

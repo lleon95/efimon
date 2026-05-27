@@ -28,12 +28,12 @@ namespace efimon {
 /**
  * @brief Object to hold disk I/O event readings
  */
-class IOEventReadings : public Readings {
+class EBPFDiskObserver : public Readings {
  public:
   /**
-   * @brief Construct a new IOEventReadings object
+   * @brief Construct a new EBPFDiskObserver object
    */
-  IOEventReadings() = default;
+  EBPFDiskObserver() = default;
 
   /**
    * @brief Get the type of readings
@@ -53,10 +53,6 @@ class IOEventReadings : public Readings {
   uint32_t pid = 0;
   /** File descriptor of the read */
   uint32_t fd = 0;
-  /** Number of bytes read */
-  uint64_t bytes_read = 0;
-  /** Command name of the process */
-  char comm[16]{};
 };
 
 /**
@@ -95,7 +91,7 @@ class ModuloIODiskObserver : public Observer {
    * Observer::Trigger() method must be invoked before calling this method
    *
    * @return std::vector<Readings*> vector of readings from the observer.
-   * In this case, the Readings* can be dynamic-casted to IOEventReadings.
+   * In this case, the Readings* can be dynamic-casted to EBPFDiskObserver.
    */
   std::vector<Readings*> GetReadings() override;
 
@@ -187,7 +183,7 @@ class ModuloIODiskObserver : public Observer {
 
  private:
   /** I/O event readings: where the results are going to be encapsulated */
-  std::vector<IOEventReadings> readings_;
+  std::vector<EBPFDiskObserver> readings_;
 
   /** If true, the instance has valid measurements */
   bool valid_;

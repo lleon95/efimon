@@ -6,7 +6,7 @@
 #
 
 # eBPF Module: Sampling by PID
-subdir('sampling-by-pid')
+subdir('cpu-assembly-sampler')
 
 # eBPF Module: Disk I/O Tracing
 subdir('disk-io')
