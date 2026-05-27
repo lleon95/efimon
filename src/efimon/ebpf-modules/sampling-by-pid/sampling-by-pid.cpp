@@ -385,7 +385,7 @@ Status SamplingByPIDObserver::ParseResults() {
   return Status{};
 }
 
-Status SamplingByPIDObserver::NormaliseResults() {
+Status SamplingByPIDObserver::NormalizeResults() {
   if (this->samples_collected_ == 0) return Status{};
 
   for (auto &pair : this->readings_.histogram) {
@@ -443,7 +443,7 @@ Status SamplingByPIDObserver::Trigger() {
     this->ProcessSample(sample.pid, sample.tid, sample.ip, sample.ts);
   }
 
-  this->NormaliseResults();
+  this->NormalizeResults();
   return Status{};
 }
 

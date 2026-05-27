@@ -8,10 +8,10 @@
 # eBPF Module: Sampling by PID
 subdir('sampling-by-pid')
 
-# eBPF Module: ModuloIODisk
-subdir('moduloio-disk')
+# eBPF Module: Disk I/O Tracing
+subdir('disk-io')
 
 # Concatenate all eBPF modules headers
 lib_ebpf_modules_headers = []
 lib_ebpf_modules_headers += lib_sampling_by_pid_headers
-lib_ebpf_modules_headers += lib_moduloio_disk_headers
+lib_ebpf_modules_headers += lib_disk_io_headers

@@ -212,7 +212,7 @@ class SamplingByPIDObserver : public Observer {
   std::vector<CollectedSample> collected_samples_;
   /** Threading for asynchronous execution */
   std::unique_ptr<std::thread> worker_thread_;
-  /** Mutex for synchronisation and coherency */
+  /** Mutex for synchronization and consistency */
   std::mutex worker_mutex_;
   /** Condition variable to wait for the termination */
   std::condition_variable worker_cv_;
@@ -230,7 +230,7 @@ class SamplingByPIDObserver : public Observer {
   Status CleanupBPF();
 
   /**
-   * @brief Police the ring buffer for new samples
+   * @brief Poll the ring buffer for new samples
    */
   Status PollRingBuffer();
 
@@ -242,8 +242,8 @@ class SamplingByPIDObserver : public Observer {
   /** Parses the annotation results */
   Status ParseResults();
 
-  /** Normalise the annotation results */
-  Status NormaliseResults();
+  /** Normalize the annotation results */
+  Status NormalizeResults();
 
   /** Worker to poll samples in an asynchronous way */
   void Worker();

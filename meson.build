@@ -100,19 +100,19 @@ else
   warning('Intel PCM is disabled')
 endif
 
-# Add ModuloIODisk submodule
-enable_moduloio = false
-if get_option('enable-moduloio')
-  moduloio_proj = subproject('ModuloIODisk')
-  moduloio_dep = declare_dependency(
-    include_directories: moduloio_proj.get_variable('inc'),
-    dependencies: moduloio_proj.get_variable('libbpf')
+# Add disk I/O submodule
+enable_disk_io = false
+if get_option('enable-disk-io')
+  disk_io_proj = subproject('disk-io')
+  disk_io_dep = declare_dependency(
+    include_directories: disk_io_proj.get_variable('inc'),
+    dependencies: disk_io_proj.get_variable('libbpf')
   )
-  project_deps += moduloio_dep
-  enable_moduloio = true
-  message('ModuloIODisk submodule enabled')
+  project_deps += disk_io_dep
+  enable_disk_io = true
+  message('Disk I/O submodule enabled')
 else
-  warning('ModuloIODisk submodule is disabled')
+  warning('Disk I/O submodule is disabled')
 endif
 
 # Add Sampling_by_PID submodule

@@ -9,11 +9,12 @@
 
 // prog.bpf.c
 
+// clang-format off
+#include "vmlinux.h"  // NOLINT
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
-
-#include "vmlinux.h"  // NOLINT
+// clang-format on
 
 struct sample_t {
   u32 pid;
@@ -39,7 +40,7 @@ int on_sample(struct bpf_perf_event_data *ctx) {
   s->tid = (u32)pid_tgid;
   s->ts = bpf_ktime_get_ns();
 
-  // Captura del Program Counter (IP)
+  // Capture the Program Counter (IP)
   s->ip = PT_REGS_IP(&ctx->regs);
 
   bpf_ringbuf_submit(s, 0);

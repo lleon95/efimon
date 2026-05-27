@@ -1,13 +1,13 @@
 /**
- * @file moduloio-disk.hpp
+ * @file disk-io.hpp
  * @author Diego Avila (diego.avila@uned.cr)
- * @brief ModuloIODisk eBPF-based I/O disk event tracer
+ * @brief Disk I/O eBPF-based event tracer
  *
  * @copyright Copyright (c) 2026. See License for Licensing
  */
 
-#ifndef INCLUDE_EFIMON_EBPF_MODULES_MODULOIO_DISK_MODULOIO_DISK_HPP_
-#define INCLUDE_EFIMON_EBPF_MODULES_MODULOIO_DISK_MODULOIO_DISK_HPP_
+#ifndef INCLUDE_EFIMON_EBPF_MODULES_DISK_IO_DISK_IO_HPP_
+#define INCLUDE_EFIMON_EBPF_MODULES_DISK_IO_DISK_IO_HPP_
 
 #include <atomic>
 #include <chrono>              // NOLINT
@@ -60,7 +60,7 @@ class IOEventReadings : public Readings {
 };
 
 /**
- * @brief Observer class that wraps the ModuloIODisk eBPF interface and
+ * @brief Observer class that wraps the disk I/O eBPF interface and
  * traces disk I/O events from processes
  *
  * This observer uses eBPF programs to efficiently trace disk I/O operations
@@ -70,7 +70,7 @@ class IOEventReadings : public Readings {
 class ModuloIODiskObserver : public Observer {
  public:
   /**
-   * @brief Constructor for the ModuloIODisk eBPF Observer
+   * @brief Constructor for the disk I/O eBPF observer
    *
    * @param pid process id to trace (0 for all processes)
    * @param scope only ObserverScope::PROCESS is valid
@@ -199,7 +199,7 @@ class ModuloIODiskObserver : public Observer {
   uint64_t events_collected_;
   /** Threading for asynchronous execution */
   std::unique_ptr<std::thread> worker_thread_;
-  /** Mutex for synchronisation and coherency */
+  /** Mutex for synchronization and consistency */
   std::mutex worker_mutex_;
   /** Condition variable to wait for the termination */
   std::condition_variable worker_cv_;
@@ -233,4 +233,4 @@ class ModuloIODiskObserver : public Observer {
 
 } /* namespace efimon */
 
-#endif  // INCLUDE_EFIMON_EBPF_MODULES_MODULOIO_DISK_MODULOIO_DISK_HPP_
+#endif  // INCLUDE_EFIMON_EBPF_MODULES_DISK_IO_DISK_IO_HPP_

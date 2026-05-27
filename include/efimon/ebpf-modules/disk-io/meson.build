@@ -5,9 +5,9 @@
 # Author: Diego Avila <diego.avila@uned.cr>
 #
 
-lib_moduloio_disk_headers = []
-if enable_moduloio
-  lib_moduloio_disk_headers += [
-    files('moduloio-disk.hpp'),
+lib_disk_io_headers = []
+if enable_disk_io
+  lib_disk_io_headers += [
+    files('disk-io.hpp'),
   ]
 endif
