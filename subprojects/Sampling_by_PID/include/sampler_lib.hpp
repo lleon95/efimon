@@ -31,9 +31,15 @@ struct Config {
 // Request a graceful stop for a currently running sampling session.
 void request_stop();
 
-// Runs eBPF perf-event sampling and appends collected samples to v_out_samples.
-// Returns true on success. If false, str_error_message contains a
-// human-readable error.
+/**
+ * @brief Runs eBPF perf-event sampling and appends collected samples to
+ * v_out_samples.
+ *
+ * @param st_config Configuration for the sampling session
+ * @param v_out_samples Vector to store collected samples
+ * @param str_error_message String to store error messages in case of failure
+ * @return true on success, false on failure
+ */
 bool run_sampling(const Config& st_config, std::vector<Sample>& v_out_samples,
                   std::string& str_error_message);
 
