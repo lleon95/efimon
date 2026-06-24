@@ -8,6 +8,7 @@
 
 #include <unistd.h>
 
+#include <cstdlib>
 #include <efimon/ebpf-modules/cpu-assembly-sampler/sampling-by-pid.hpp>
 #include <iostream>
 #include <string>
@@ -60,8 +61,6 @@ int main(int argc, char **argv) {
       }
     }
   }
-
-  st_ret = ob_sampling.Trigger();
 
   return 0;
 }

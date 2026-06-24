@@ -7,8 +7,6 @@
  * @copyright Copyright (c) 2026. See License for Licensing
  */
 
-#include "sampler_lib.hpp"  // NOLINT
-
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
 #include <linux/perf_event.h>
@@ -18,6 +16,7 @@
 
 #include <chrono>
 #include <csignal>
+#include <cstdint>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -25,6 +24,19 @@
 #include "../include/prog.skel.h"
 
 namespace cpu_sampler {
+
+struct Sample {
+  uint32_t pid;
+  uint32_t tid;
+  uint64_t ip;
+  uint64_t ts;
+};
+
+struct Config {
+  int target_pid;
+  uint64_t frequency_hz;
+  int duration_seconds;
+};
 
 static volatile sig_atomic_t g_i_stop = 0;
 

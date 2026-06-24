@@ -10,6 +10,8 @@ EfiMon.CPUConsumptionModule/
 ├── src/
 │   ├── main.cpp                              # Programa principal en espacio de usuario
 │   ├── prog.bpf.c                            # Programa eBPF (kernel space)
+│
+├── examples/
 │   └── benchmark.c                           # Código C para generar carga (multiplicación de matrices)
 │
 ├── include/
@@ -24,7 +26,7 @@ EfiMon.CPUConsumptionModule/
 ├── data/
 │   ├── results/
 │   │   ├── bench_no_sampler.out              # Archivos de salida de las pruebas
-│   │   ├── bench_with_sampler.out 
+│   │   ├── bench_with_sampler.out
 │   │   └── results.csv                       # Resultados crudos del benchmark
 │   └── plots/
 │       └── slowdown_vs_freq.png     # Imagen del plot con los resultados de las pruebas
@@ -109,4 +111,3 @@ make clean
 - bpftool: generación automática de headers (vmlinux.h, skeleton)
 - Python (matplotlib, pandas): visualización de resultados
 - OpenBLAS: operaciones de cómputo intensivo en el benchmark
-

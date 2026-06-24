@@ -31,7 +31,14 @@
 #include <string>
 #include <vector>
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
 #include "prog.skel.h"  // NOLINT
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
 namespace efimon {
 

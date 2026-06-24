@@ -7,8 +7,6 @@
  * @copyright Copyright (c) 2026. See License for Licensing
  */
 
-// prog.bpf.c
-
 // clang-format off
 #include "vmlinux.h"  // NOLINT
 #include <bpf/bpf_core_read.h>
@@ -29,8 +27,8 @@ struct {
 } rb SEC(".maps");
 
 SEC("perf_event")
-int on_sample(struct bpf_perf_event_data *ctx) {
-  struct sample_t *s;
+int on_sample(struct bpf_perf_event_data* ctx) {
+  struct sample_t* s;
   u64 pid_tgid = bpf_get_current_pid_tgid();
 
   s = bpf_ringbuf_reserve(&rb, sizeof(*s), 0);

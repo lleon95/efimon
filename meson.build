@@ -26,6 +26,8 @@ project_inc = [include_directories('include')]
 project_deps = []
 c_args = ['-Werror']
 cpp_args = ['-Werror']
+clang = find_program('clang', required: false, native: true)
+bpftool = find_program('bpftool', required: false, native: true)
 
 # Find proc library
 cpp = meson.get_compiler('cpp')
@@ -118,19 +120,18 @@ endif
 # Add Sampling_by_PID submodule
 enable_sampling_by_pid = false
 if get_option('enable-sampling-by-pid')
-  sampling_proj = subproject('Sampling_by_PID')
-  sampling_dep = declare_dependency(
-    include_directories: sampling_proj.get_variable('projectinc'),
-    dependencies: [sampling_proj.get_variable('project_deps'),
-                   sampling_proj.get_variable('sampler_dep')]
-  )
-  project_deps += sampling_dep
-  enable_sampling_by_pid = true
-  c_args += ['-DENABLE_SAMPLING_BY_PID']
-  cpp_args += ['-DENABLE_SAMPLING_BY_PID']
-  message('Sampling_by_PID submodule enabled')
+  libbpf_dep = dependency('libbpf', required: false)
+  if libbpf_dep.found() and clang.found() and bpftool.found()
+    project_deps += [libbpf_dep]
+    enable_sampling_by_pid = true
+    c_args += ['-DENABLE_SAMPLING_BY_PID']
+    cpp_args += ['-DENABLE_SAMPLING_BY_PID']
+    message('Sampling-by-PID module enabled from main source tree')
+  else
+    warning('Sampling-by-PID disabled: requires libbpf, clang and bpftool')
+  endif
 else
-  warning('Sampling_by_PID submodule is disabled')
+  warning('Sampling-by-PID module is disabled')
 endif
 
 # Verify if RAPL exists
