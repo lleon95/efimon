@@ -8,6 +8,7 @@
 
 #include <unistd.h>
 
+#include <cstdio>
 #include <cstring>
 #include <efimon/proc/net.hpp>
 #include <efimon/status.hpp>

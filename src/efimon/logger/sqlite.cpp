@@ -13,6 +13,7 @@
 #include <string>
 #include <tuple>
 #include <unordered_map>
+#include <vector>
 
 namespace efimon {
 static std::unordered_map<Logger::FieldType, std::string> kSqlMapping = {

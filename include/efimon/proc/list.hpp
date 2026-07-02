@@ -9,10 +9,9 @@
 #ifndef INCLUDE_EFIMON_PROC_LIST_HPP_
 #define INCLUDE_EFIMON_PROC_LIST_HPP_
 
-#include <vector>
-
 #include <efimon/proc-lister.hpp>
 #include <efimon/status.hpp>
+#include <vector>
 
 namespace efimon {
 

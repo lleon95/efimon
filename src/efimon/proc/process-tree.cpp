@@ -7,11 +7,12 @@
  */
 
 #include <efimon/proc/process-tree.hpp>
-#include <filesystem>
+#include <filesystem>  // NOLINT(build/c++17)
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <vector>
 
 namespace efimon {
 

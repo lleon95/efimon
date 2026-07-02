@@ -74,7 +74,7 @@ On Ubuntu 24.04:
 
 ```bash
 # ProcPS
-apt install libcapstone-dev 
+apt install libcapstone-dev
 # Linux Perf
 apt install linux-tools-common linux-tools-generic
 # SQLite

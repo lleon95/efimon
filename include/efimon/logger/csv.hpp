@@ -9,15 +9,14 @@
 #ifndef INCLUDE_EFIMON_LOGGER_CSV_HPP_
 #define INCLUDE_EFIMON_LOGGER_CSV_HPP_
 
+#include <efimon/logger.hpp>
+#include <efimon/status.hpp>
 #include <fstream>
 #include <memory>
 #include <string>
 #include <tuple>
 #include <unordered_map>
 #include <vector>
-
-#include <efimon/logger.hpp>
-#include <efimon/status.hpp>
 
 namespace efimon {
 class CSVLogger : public Logger {

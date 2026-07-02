@@ -9,13 +9,11 @@
 #ifndef INCLUDE_EFIMON_PROCESS_MANAGER_HPP_
 #define INCLUDE_EFIMON_PROCESS_MANAGER_HPP_
 
+#include <efimon/status.hpp>
 #include <ostream>
 #include <string>
-#include <vector>
-
-#include <efimon/status.hpp>
-
 #include <third-party/pstream.hpp>
+#include <vector>
 
 namespace efimon {
 

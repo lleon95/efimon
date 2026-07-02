@@ -6,10 +6,9 @@
  * @copyright Copyright (c) 2024. See License for Licensing
  */
 
+#include <algorithm>
 #include <efimon/arg-parser.hpp>
 #include <efimon/process-manager.hpp>
-
-#include <algorithm>
 #include <iostream>
 #include <string>
 #include <vector>

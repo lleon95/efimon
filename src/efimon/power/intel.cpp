@@ -15,6 +15,7 @@
 #include <mutex>  // NOLINT
 #include <string>
 #include <third-party/pcm.hpp>
+#include <utility>
 #include <vector>
 
 namespace efimon {

@@ -9,13 +9,12 @@
 #ifndef INCLUDE_EFIMON_PROC_IO_HPP_
 #define INCLUDE_EFIMON_PROC_IO_HPP_
 
-#include <vector>
-
 #include <efimon/observer-enums.hpp>
 #include <efimon/observer.hpp>
 #include <efimon/readings.hpp>
 #include <efimon/readings/io-readings.hpp>
 #include <efimon/status.hpp>
+#include <vector>
 
 namespace efimon {
 
@@ -117,8 +116,8 @@ class ProcIOObserver : public Observer {
    *
    * @return vector of capabilities
    */
-  const std::vector<ObserverCapabilities>& GetCapabilities() const
-      noexcept override;
+  const std::vector<ObserverCapabilities>& GetCapabilities()
+      const noexcept override;
 
   /**
    * @brief Get the Status of the Observer

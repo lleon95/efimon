@@ -9,11 +9,10 @@
 #ifndef INCLUDE_EFIMON_OBSERVER_HPP_
 #define INCLUDE_EFIMON_OBSERVER_HPP_
 
-#include <vector>
-
 #include <efimon/observer-enums.hpp>
 #include <efimon/readings.hpp>
 #include <efimon/status.hpp>
+#include <vector>
 
 namespace efimon {
 
@@ -103,8 +102,8 @@ class Observer {
    *
    * @return vector of capabilities
    */
-  virtual const std::vector<ObserverCapabilities>& GetCapabilities() const
-      noexcept = 0;
+  virtual const std::vector<ObserverCapabilities>& GetCapabilities()
+      const noexcept = 0;
 
   /**
    * @brief Get the Status of the Observer

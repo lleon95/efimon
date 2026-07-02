@@ -17,7 +17,7 @@
 #include <efimon/readings.hpp>
 #include <efimon/readings/instruction-readings.hpp>
 #include <efimon/status.hpp>
-#include <filesystem>
+#include <filesystem>  // NOLINT(build/c++17)
 #include <memory>
 #include <string>
 #include <third-party/pstream.hpp>
@@ -110,8 +110,8 @@ class PerfAnnotateObserver : public Observer {
    *
    * @return vector of capabilities
    */
-  const std::vector<ObserverCapabilities>& GetCapabilities() const
-      noexcept override;
+  const std::vector<ObserverCapabilities>& GetCapabilities()
+      const noexcept override;
 
   /**
    * @brief Get the Status of the Observer

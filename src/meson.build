@@ -6,6 +6,7 @@
 #
 
 lib_efimon_sources = []
+lib_efimon_extra_deps = []
 
 # -----------------------------------------------------------------------------
 # Library compilation
@@ -13,11 +14,11 @@ lib_efimon_sources = []
 
 subdir('efimon')
 libefimon = shared_library('efimon' ,
-  lib_efimon_sources, 
+  lib_efimon_sources,
   cpp_args : cpp_args,
   install : true,
   include_directories : [project_inc],
-  dependencies : [project_deps]
+  dependencies : project_deps + lib_efimon_extra_deps
 )
 
 libefimon_dep = declare_dependency(link_with: libefimon)

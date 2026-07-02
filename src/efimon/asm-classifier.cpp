@@ -11,6 +11,7 @@
 #include <efimon/asm-classifier/x86-classifier.hpp>
 #include <memory>
 #include <string>
+#include <utility>
 
 namespace efimon {
 

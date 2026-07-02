@@ -8,12 +8,14 @@
  */
 
 #include <algorithm>
+#include <cstdio>
 #include <efimon/perf/record.hpp>
-#include <filesystem>
-#include <mutex>  // NOLINT
+#include <filesystem>  // NOLINT(build/c++17)
+#include <mutex>       // NOLINT
 #include <string>
 #include <third-party/pstream.hpp>
 #include <unordered_map>
+#include <vector>
 
 static std::mutex singleton_mutex_;
 static std::vector<uint> active_pids_;

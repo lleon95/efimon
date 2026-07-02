@@ -9,16 +9,15 @@
 #ifndef INCLUDE_EFIMON_LOGGER_SQLITE_HPP_
 #define INCLUDE_EFIMON_LOGGER_SQLITE_HPP_
 
+#include <sqlite3.h>
+
+#include <efimon/logger.hpp>
+#include <efimon/status.hpp>
 #include <memory>
 #include <string>
 #include <tuple>
 #include <unordered_map>
 #include <vector>
-
-#include <sqlite3.h>
-
-#include <efimon/logger.hpp>
-#include <efimon/status.hpp>
 
 namespace efimon {
 class SQLiteLogger : public Logger {

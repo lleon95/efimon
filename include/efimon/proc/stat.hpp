@@ -9,14 +9,13 @@
 #ifndef INCLUDE_EFIMON_PROC_STAT_HPP_
 #define INCLUDE_EFIMON_PROC_STAT_HPP_
 
-#include <vector>
-
 #include <efimon/observer-enums.hpp>
 #include <efimon/observer.hpp>
 #include <efimon/readings.hpp>
 #include <efimon/readings/cpu-readings.hpp>
 #include <efimon/readings/ram-readings.hpp>
 #include <efimon/status.hpp>
+#include <vector>
 
 #define MAX_NUM_CPUS 1024
 
@@ -171,8 +170,8 @@ class ProcStatObserver : public Observer {
    *
    * @return vector of capabilities
    */
-  const std::vector<ObserverCapabilities>& GetCapabilities() const
-      noexcept override;
+  const std::vector<ObserverCapabilities>& GetCapabilities()
+      const noexcept override;
 
   /**
    * @brief Get the Status of the Observer

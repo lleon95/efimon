@@ -13,17 +13,19 @@
 #include <sstream>
 #include <string>
 #include <tuple>
+#include <vector>
 
 namespace efimon {
+// NOLINT
 
 static constexpr char kCpuInfoFile[] = "/proc/cpuinfo";
 static std::mutex m_single_cpuinfo;
 
 CPUInfo::CPUInfo()
     : num_logical_cores_{0},
-      num_physical_cores_{0},
-      num_sockets_{0},
-      topology_{} {
+      num_physical_cores_{0},  // NOLINT
+      num_sockets_{0},         // NOLINT
+      topology_{} {            // NOLINT
   /* Parses the map and constructs it */
   ParseMap();
 

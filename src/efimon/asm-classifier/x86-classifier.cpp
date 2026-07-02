@@ -14,8 +14,8 @@
 
 namespace efimon {
 
-const std::string x86Classifier::OperandTypes(const std::string &operands) const
-    noexcept {
+const std::string x86Classifier::OperandTypes(
+    const std::string &operands) const noexcept {
   std::string res = "";
   std::string firstop = "";
   std::string secondop = "";
@@ -59,9 +59,8 @@ const std::string x86Classifier::OperandTypes(const std::string &operands) const
   return res;
 }
 
-InstructionPair x86Classifier::Classify(const std::string &inst,
-                                        const std::string &operands) const
-    noexcept {
+InstructionPair x86Classifier::Classify(
+    const std::string &inst, const std::string &operands) const noexcept {
   static const std::string kArithOp[] = {"add", "sub", "div",  "mul",
                                          "dp",  "abs", "sign", "avg",
                                          "dec", "inc", "neg"};

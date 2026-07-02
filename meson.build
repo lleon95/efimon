@@ -11,7 +11,7 @@ project('efimon', ['c','cpp'], version : '0.2.0',
                            'c_std=c17',
                            ],
         license: 'LGPL-2.1-only',
-        meson_version: '>= 1.0.0' 
+        meson_version: '>= 1.0.0'
        )
 
 # -----------------------------------------------------------------------------
@@ -26,6 +26,8 @@ project_inc = [include_directories('include')]
 project_deps = []
 c_args = ['-Werror']
 cpp_args = ['-Werror']
+clang = find_program('clang', required: false, native: true)
+bpftool = find_program('bpftool', required: false, native: true)
 
 # Find proc library
 cpp = meson.get_compiler('cpp')
@@ -98,6 +100,38 @@ if get_option('enable-pcm')
   enable_pcm = true
 else
   warning('Intel PCM is disabled')
+endif
+
+# Add disk I/O submodule
+enable_disk_io = false
+if get_option('enable-disk-io')
+  disk_io_proj = subproject('disk-io')
+  disk_io_dep = declare_dependency(
+    include_directories: disk_io_proj.get_variable('inc'),
+    dependencies: disk_io_proj.get_variable('libbpf')
+  )
+  project_deps += disk_io_dep
+  enable_disk_io = true
+  message('Disk I/O submodule enabled')
+else
+  warning('Disk I/O submodule is disabled')
+endif
+
+# Add Sampling_by_PID submodule
+enable_sampling_by_pid = false
+if get_option('enable-sampling-by-pid')
+  libbpf_dep = dependency('libbpf', required: false)
+  if libbpf_dep.found() and clang.found() and bpftool.found()
+    project_deps += [libbpf_dep]
+    enable_sampling_by_pid = true
+    c_args += ['-DENABLE_SAMPLING_BY_PID']
+    cpp_args += ['-DENABLE_SAMPLING_BY_PID']
+    message('Sampling-by-PID module enabled from main source tree')
+  else
+    warning('Sampling-by-PID disabled: requires libbpf, clang and bpftool')
+  endif
+else
+  warning('Sampling-by-PID module is disabled')
 endif
 
 # Verify if RAPL exists

@@ -8,8 +8,6 @@
 
 #include <unistd.h>
 
-#include <iostream>
-
 #include <efimon/arg-parser.hpp>
 #include <efimon/observer-enums.hpp>
 #include <efimon/proc/io.hpp>
@@ -17,6 +15,7 @@
 #include <efimon/proc/net.hpp>
 #include <efimon/proc/stat.hpp>
 #include <efimon/proc/thread-tree.hpp>
+#include <iostream>
 
 int main(int argc, char **argv) {
   auto cli = efimon::ArgParser{argc, argv};
